@@ -47,8 +47,9 @@ async function E(o){const iv=crypto.getRandomValues(new Uint8Array(12));return b
 async function D(s){const[i,c]=s.split('.');return JSON.parse(td.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(i)},K,ub(c))))}
 async function kd(p,salt){const m=await crypto.subtle.importKey('raw',te.encode(p),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 const ref=(...p)=>doc(db,'users',U.uid,...p);
-const loadDay=async d=>{const s=await getDoc(ref('days',dk(d)));return s.exists()?await D(s.data().d):{tasks:[],blocks:[],learned:'',worked:''}};
-const saveDay=async(d,x)=>setDoc(ref('days',dk(d)),{d:await E(x)});
+let cache={};
+const loadDay=d=>{const k=dk(d);return cache[k]=cache[k]||(async()=>{const s=await getDoc(ref('days',k));return s.exists()?await D(s.data().d):{tasks:[],blocks:[],learned:'',worked:''}})()};
+const saveDay=async(d,x)=>{cache[dk(d)]=Promise.resolve(x);return setDoc(ref('days',dk(d)),{d:await E(x)})};
 const saveS=async()=>setDoc(ref('meta','s'),{s:SALT,c:await E(S)});
 const sv=()=>saveDay(date,dd);
 
@@ -56,7 +57,7 @@ let PW=null,SALT=null,K=null,mode='in';
 const mail=u=>u.toLowerCase()+'@yawmi.local';
 const WARN='<p style="font-size:13px;color:var(--mu);margin-top:18px;line-height:1.9">🔒 بياناتك مشفّرة ولا يستطيع أحد رؤيتها غيرك، وهي محفوظة لك.<br>في حال نسيت كلمة المرور فلا يمكن استرجاع بياناتك.</p>';
 const LOGO='<img src="logo.png" width=96 height=96 alt="" style="border-radius:22px">';
-onAuthStateChanged(auth,u=>{U=u;if(!u){K=null;PW=null;return login()}PW?unlock():askpw()});
+onAuthStateChanged(auth,u=>{U=u;cache={};if(!u){K=null;PW=null;return login()}PW?unlock():askpw()});
 function login(){
  const nw=mode=='new',B='style="font-weight:600"';
  A.innerHTML=`<div class=box>${LOGO}<h1>يومي</h1><p>خطّط يومك وسجّل وقتك الفعلي</p>
@@ -97,7 +98,7 @@ function ask(x,f,t,c,ok){
 }
 function render(){
  W=dd.w??S.w;Z=dd.s??S.s;const hs=[];for(let h=W;h<Z;h++)hs.push(h);const op=(a,b,v)=>{let o='';for(let i=a;i<=b;i++)o+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return o};const un=pv.tasks.filter(t=>!t.x&&!t.m);
- A.innerHTML=`<div class=row style="gap:10px;margin-bottom:12px"><img src="logo.png" width=40 height=40 alt="" style="border-radius:10px"><b style="font-family:Zain,Plex,sans-serif;font-size:24px">يومي</b></div><div class="row bar"><div class=row><button id=pb>اليوم السابق</button><button id=tb>اليوم</button><button id=nb>اليوم التالي</button></div><div class=row><button id=wk>تقرير الأسبوع</button><button id=so>خروج</button></div></div>
+ A.innerHTML=`<div class=row style="gap:10px;margin-bottom:12px"><img src="logo.png" width=40 height=40 alt="" style="border-radius:10px"><b style="font-family:Zain,Plex,sans-serif;font-size:24px">يومي</b></div><div class="row bar"><div class=row><button id=pb>اليوم السابق</button><button id=tb>اليوم</button><button id=nb>اليوم التالي</button></div><div class=row><button id=mb>📅 ${date.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long'})}</button><button id=wk>تقرير الأسبوع</button><button id=so>خروج</button></div></div>
  <h1>${fd(date)}</h1>
  <div class=row><span>صحيت الساعة</span><select id=dw style="width:auto">${op(0,23,W)}</select><span>أنام الساعة</span><select id=dz style="width:auto">${op(1,24,Z)}</select></div>
  ${un.length?'<h2>مهام أمس لم تنجز</h2>'+pv.tasks.map((t,i)=>!t.x&&!t.m?`<div class=t><span>${esc(t.n)}</span><button data-mv=${i}>انقلها لليوم</button></div>`:'').join(''):''}
@@ -108,7 +109,7 @@ function render(){
  <h2>وش تعلمت اليوم</h2><textarea id=ln placeholder="اكتب /عنوان أو /قائمة أو /مهمة ثم مسافة"></textarea>
  <h2>وش اشتغلت اليوم</h2><textarea id=wr></textarea>`;
  const go2=n=>{date.setDate(date.getDate()+n);go()},all=s=>A.querySelectorAll(s);
- $('#pb').onclick=()=>go2(-1);$('#nb').onclick=()=>go2(1);$('#tb').onclick=()=>{date=new Date();go()};$('#wk').onclick=report;$('#so').onclick=()=>signOut(auth);
+ $('#pb').onclick=()=>go2(-1);$('#nb').onclick=()=>go2(1);$('#tb').onclick=()=>{date=new Date();go()};$('#wk').onclick=()=>report(date);$('#mb').onclick=()=>monthView(date);$('#so').onclick=()=>signOut(auth);
  $('#nt').onkeydown=e=>{if(e.key=='Enter'&&e.target.value.trim()){dd.tasks.push({n:e.target.value.trim(),x:0});sv();render();$('#nt').focus()}};
  all('[data-ck]').forEach(el=>el.onchange=()=>{const i=+el.dataset.ck,t=dd.tasks[i];t.x=el.checked?1:0;sv();render();if(t.x)ask(t.n,W,W+1,0,b=>{dd.blocks.push({...b,k:i});sv();render()})});
  all('[data-mv]').forEach(el=>el.onclick=()=>{const t=pv.tasks[+el.dataset.mv];dd.tasks.push({n:t.n,x:0});t.m=1;saveDay(pd,pv);sv();render()});
@@ -121,15 +122,38 @@ function render(){
  const M={'عنوان':'# ','قائمة':'• ','مهمة':'☐ '};let tm;
  [['#ln','learned'],['#wr','worked']].forEach(([s,k])=>{const e=$(s);e.value=dd[k];e.oninput=()=>{const v=e.value.replace(/(^|\n)\/(عنوان|قائمة|مهمة) /g,(m,a,w)=>a+M[w]);if(v!=e.value)e.value=v;dd[k]=v;clearTimeout(tm);tm=setTimeout(sv,600)}});
 }
-async function report(){
+const pct=ts=>ts.length?Math.round(100*ts.filter(t=>t.x).length/ts.length):null;
+const bar=p=>`<div style="height:6px;border-radius:3px;background:var(--bd);margin:6px 0"><div style="height:100%;width:${p||0}%;border-radius:3px;background:var(--tx)"></div></div>`;
+const wkStart=d=>{const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(0,0,0,0);return x};
+const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const ld=async d=>({d,x:await loadDay(d)});
+const shortD=d=>d.toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'short'});
+const BX='border:1px solid var(--bd);border-radius:10px;padding:12px;cursor:pointer;background:var(--hv)',GR='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px';
+const pd0=s=>new Date(s+'T00:00:00');
+async function report(from){
  A.innerHTML='<p class=box>جاري التحميل…</p>';
- const d0=new Date(date);d0.setDate(d0.getDate()-d0.getDay());
- const ds=await Promise.all([...Array(7)].map((_,i)=>{const d=new Date(d0);d.setDate(d.getDate()+i);return loadDay(d).then(x=>({d,x}))}));
- const sum={};let tot=0;ds.forEach(({x})=>x.blocks.forEach(b=>{sum[b.c]=(sum[b.c]||0)+b.t-b.f;tot+=b.t-b.f}));const all=ds.reduce((a,{x})=>a+((x.s??S.s)-(x.w??S.w)),0);
- A.innerHTML=`<button id=bk>رجوع</button><h1>تقرير الأسبوع</h1><p>سجّلت ${tot} من ${all} ساعة، وغير المسجّل ${all-tot} ساعة.</p>
- <h2>حسب التصنيف</h2>${S.cats.map((k,i)=>`<div><span class=c style="background:${k.c}"></span>${k.e||''} ${esc(k.n)}: ${sum[i]||0} ساعة</div>`).join('')}
+ const d0=wkStart(from),ds=await Promise.all([...Array(7)].map((_,i)=>ld(addD(d0,i))));
+ const p=pct(ds.flatMap(({x})=>x.tasks)),sum={};let tot=0;
+ ds.forEach(({x})=>x.blocks.forEach(b=>{sum[b.c]=(sum[b.c]||0)+b.t-b.f;tot+=b.t-b.f}));
+ const all=ds.reduce((a,{x})=>a+((x.s??S.s)-(x.w??S.w)),0),today=dk(new Date()),yn=v=>v&&v.trim()?'✅':'❌';
+ A.innerHTML=`<div class="row bar"><button id=bk>رجوع لليوم</button><div class=row><button id=wp>الأسبوع السابق</button><button id=wn>الأسبوع التالي</button><button id=mn>📅 الشهر</button></div></div>
+ <h1>تقرير الأسبوع</h1><p>${shortD(d0)} – ${shortD(addD(d0,6))} · إنجاز المهام: <b>${p===null?'لا توجد مهام':p+'%'}</b></p>${bar(p)}
+ <div style="${GR}">${ds.map(({d,x})=>{const q=pct(x.tasks);return`<div data-d="${dk(d)}" style="${BX};${dk(d)==today?'outline:2px solid var(--tx)':''}"><div style="color:var(--mu);font-size:13px">${d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long'})} ${d.getDate()}</div><div style="font-size:26px;font-weight:600">${q===null?'—':q+'%'}</div>${bar(q)}<div style="font-size:12px;color:var(--mu)">${x.tasks.filter(t=>t.x).length} من ${x.tasks.length} مهمة</div><div style="margin-top:8px">📚 تعلّم ${yn(x.learned)}<br>💼 عمل ${yn(x.worked)}</div></div>`}).join('')}</div>
+ <h2>ساعات الأسبوع</h2><p>سجّلت ${tot} من ${all} ساعة، وغير المسجّل ${all-tot} ساعة.</p>${S.cats.map((k,i)=>`<div><span class=c style="background:${k.c}"></span>${k.e||''} ${esc(k.n)}: ${sum[i]||0} ساعة</div>`).join('')}
  <h2>الأنشطة</h2>${ds.map(({d,x})=>x.blocks.length?`<p><b>${fd(d)}</b><br>${x.blocks.map(b=>`${fmt(b.f)} – ${fmt(b.t)}: ${S.cats[b.c]?.e||''} ${esc(b.x)}`).join('<br>')}</p>`:'').join('')||'<p>ما فيه أنشطة مسجّلة بعد.</p>'}`;
- $('#bk').onclick=render;
+ $('#bk').onclick=render;$('#wp').onclick=()=>report(addD(d0,-7));$('#wn').onclick=()=>report(addD(d0,7));$('#mn').onclick=()=>monthView(addD(d0,3));
+ A.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{date=pd0(el.dataset.d);go()});
+}
+async function monthView(r0){
+ A.innerHTML='<p class=box>جاري التحميل…</p>';
+ const m0=new Date(r0.getFullYear(),r0.getMonth(),1),m1=new Date(r0.getFullYear(),r0.getMonth()+1,0),ws=[];
+ for(let w=wkStart(m0);w<=m1;w=addD(w,7))ws.push(w);
+ const data=await Promise.all(ws.map(w=>Promise.all([...Array(7)].map((_,i)=>ld(addD(w,i)))))),cur=dk(wkStart(new Date()));
+ A.innerHTML=`<div class="row bar"><button id=bk>رجوع لليوم</button><div class=row><button id=mp>الشهر السابق</button><button id=mx>الشهر التالي</button></div></div>
+ <h1>${m0.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long',year:'numeric'})}</h1>
+ <div style="${GR.replace('150px','200px')}">${ws.map((w,i)=>{const ts=data[i].flatMap(({x})=>x.tasks),p=pct(ts);return`<div data-w="${dk(w)}" style="${BX};${dk(w)==cur?'outline:2px solid var(--tx)':''}"><div style="color:var(--mu);font-size:13px">الأسبوع ${i+1} · ${shortD(w)} – ${shortD(addD(w,6))}${dk(w)==cur?' · 📍 أنت هنا':''}</div><div style="font-size:26px;font-weight:600">${p===null?'—':p+'%'}</div>${bar(p)}<div style="font-size:12px;color:var(--mu)">${ts.filter(t=>t.x).length} من ${ts.length} مهمة</div></div>`}).join('')}</div>`;
+ $('#bk').onclick=render;$('#mp').onclick=()=>monthView(new Date(m0.getFullYear(),m0.getMonth()-1,1));$('#mx').onclick=()=>monthView(new Date(m0.getFullYear(),m0.getMonth()+1,1));
+ A.querySelectorAll('[data-w]').forEach(el=>el.onclick=()=>report(pd0(el.dataset.w)));
 }
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

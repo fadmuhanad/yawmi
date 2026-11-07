@@ -105,8 +105,8 @@ function render(){
  A.innerHTML=`<div class=row style="gap:10px;margin-bottom:12px"><img src="logo.png" width=40 height=40 alt="" style="border-radius:10px"><b style="font-size:24px">يومي</b></div><div class="row bar"><div class=row><button id=pb>اليوم السابق</button><button id=tb>اليوم</button><button id=nb>اليوم التالي</button></div><div class=row><button id=mb>📅 ${date.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long'})}</button><button id=wk>تقرير الأسبوع</button><button id=so>خروج</button></div></div>
  <h1>${fd(date)}</h1>
  <div class=row><span>صحيت الساعة</span><select id=dw style="width:auto">${op(0,23,W)}</select><span>أنام الساعة</span><select id=dz style="width:auto">${op(1,24,Z)}</select></div>
- ${un.length?'<h2>مهام أمس لم تنجز</h2>'+pv.tasks.map((t,i)=>!t.x&&!t.m?`<div class=t><span>${esc(t.n)}</span><button data-mv=${i}>انقلها لليوم</button></div>`:'').join(''):''}
- <h2>مهام اليوم</h2>${dd.tasks.map((t,i)=>`<div class="t ${t.x?'d':''}"><input type=checkbox style="width:auto" data-ck=${i} ${t.x?'checked':''}><span>${esc(t.n)}</span></div>`).join('')}
+ ${un.length?'<h2>مهام أمس لم تنجز</h2>'+pv.tasks.map((t,i)=>!t.x&&!t.m?`<div class=t><span style="flex:1">${esc(t.n)}</span><button data-mv=${i}>انقلها لليوم</button><button data-dp=${i} title="حذف">🗑</button></div>`:'').join(''):''}
+ <h2>مهام اليوم</h2>${dd.tasks.map((t,i)=>`<div class="t ${t.x?'d':''}"><input type=checkbox style="width:auto" data-ck=${i} ${t.x?'checked':''}><span style="flex:1">${esc(t.n)}</span><button data-dt=${i} title="حذف">🗑</button></div>`).join('')}
  <input id=nt placeholder="+ مهمة جديدة (Enter)">
  <h2>جدول الساعات</h2>${hs.map(h=>{const i=dd.blocks.findIndex(b=>b.f<=h&&h<b.t),b=dd.blocks[i];return`<div class=h><b>${fmt(h)}</b>${b?`<div class=f style="background:${cc(b)};color:${ink(cc(b))}" data-eb=${i}>${S.cats[b.c]?.e||''} ${esc(b.x)}</div>`:`<div data-add=${h}>+</div>`}</div>`}).join('')}
  <h2>التصنيفات</h2>${S.cats.map((k,i)=>`<div class=row data-cat=${i} style="margin-bottom:6px"><input value="${esc(k.e||'')}" maxlength=8 style="width:56px;text-align:center"><input type=color value="${k.c}" style="width:44px;height:34px;padding:2px"><input value="${esc(k.n)}" style="flex:1"></div>`).join('')}<div class=row><button id=ac>+ تصنيف</button></div>
@@ -119,6 +119,8 @@ function render(){
  all('[data-mv]').forEach(el=>el.onclick=()=>{const t=pv.tasks[+el.dataset.mv];dd.tasks.push({n:t.n,x:0});t.m=1;saveDay(pd,pv);sv();render()});
  all('[data-add]').forEach(el=>el.onclick=()=>{const h=+el.dataset.add;ask('',h,h+1,0,b=>{dd.blocks.push(b);sv();render()})});
  all('[data-eb]').forEach(el=>el.onclick=()=>{if(confirm('حذف هذه الفترة؟')){dd.blocks.splice(+el.dataset.eb,1);sv();render()}});
+ all('[data-dt]').forEach(el=>el.onclick=()=>{const i=+el.dataset.dt;if(confirm('حذف المهمة «'+dd.tasks[i].n+'»؟')){dd.tasks.splice(i,1);sv();render()}});
+ all('[data-dp]').forEach(el=>el.onclick=()=>{const i=+el.dataset.dp;if(confirm('حذف المهمة «'+pv.tasks[i].n+'»؟')){pv.tasks.splice(i,1);saveDay(pd,pv);render()}});
  $('#dw').onchange=e=>{const v=+e.target.value;if(v>=Z){alert('وقت الاستيقاظ لازم يكون قبل وقت النوم');return render()}dd.w=v;sv();render()};
  $('#dz').onchange=e=>{const v=+e.target.value;if(v<=W){alert('وقت النوم لازم يكون بعد الاستيقاظ');return render()}dd.s=v;sv();render()};
  all('[data-cat]').forEach(r=>{const i=+r.dataset.cat,[e,c,n]=r.querySelectorAll('input');e.onchange=()=>{S.cats[i].e=e.value.trim();saveS();render()};c.onchange=()=>{S.cats[i].c=c.value;saveS();render()};n.onchange=()=>{S.cats[i].n=n.value.trim()||S.cats[i].n;saveS();render()}});

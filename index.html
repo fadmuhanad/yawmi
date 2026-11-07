@@ -107,14 +107,14 @@ function render(){
  <div class=row><span>صحيت الساعة</span><select id=dw style="width:auto">${op(0,23,W)}</select><span>أنام الساعة</span><select id=dz style="width:auto">${op(1,24,Z)}</select></div>
  ${un.length?'<h2>مهام أمس لم تنجز</h2>'+pv.tasks.map((t,i)=>!t.x&&!t.m?`<div class=t><span style="flex:1">${esc(t.n)}</span><button data-mv=${i}>انقلها لليوم</button><button data-dp=${i} title="حذف">🗑</button></div>`:'').join(''):''}
  <h2>مهام اليوم</h2>${dd.tasks.map((t,i)=>`<div class="t ${t.x?'d':''}"><input type=checkbox style="width:auto" data-ck=${i} ${t.x?'checked':''}><span style="flex:1">${esc(t.n)}</span><button data-dt=${i} title="حذف">🗑</button></div>`).join('')}
- <input id=nt placeholder="+ مهمة جديدة (Enter)">
+ <div class=row style="flex-wrap:nowrap"><input id=nt placeholder="+ مهمة جديدة" style="flex:1"><button id=na style="background:var(--tx);color:var(--bg);border-color:var(--tx);padding:6px 18px">إضافة</button></div>
  <h2>جدول الساعات</h2>${hs.map(h=>{const i=dd.blocks.findIndex(b=>b.f<=h&&h<b.t),b=dd.blocks[i];return`<div class=h><b>${fmt(h)}</b>${b?`<div class=f style="background:${cc(b)};color:${ink(cc(b))}" data-eb=${i}>${S.cats[b.c]?.e||''} ${esc(b.x)}</div>`:`<div data-add=${h}>+</div>`}</div>`}).join('')}
  <h2>التصنيفات</h2>${S.cats.map((k,i)=>`<div class=row data-cat=${i} style="margin-bottom:6px"><input value="${esc(k.e||'')}" maxlength=8 style="width:56px;text-align:center"><input type=color value="${k.c}" style="width:44px;height:34px;padding:2px"><input value="${esc(k.n)}" style="flex:1"></div>`).join('')}<div class=row><button id=ac>+ تصنيف</button></div>
  <h2>وش تعلمت اليوم</h2><textarea id=ln placeholder="اكتب /عنوان أو /قائمة أو /مهمة ثم مسافة"></textarea>
  <h2>وش اشتغلت اليوم</h2><textarea id=wr></textarea>`;
  const go2=n=>{date.setDate(date.getDate()+n);go()},all=s=>A.querySelectorAll(s);
  $('#pb').onclick=()=>go2(-1);$('#nb').onclick=()=>go2(1);$('#tb').onclick=()=>{date=new Date();go()};$('#wk').onclick=()=>report(date);$('#mb').onclick=()=>monthView(date);$('#so').onclick=()=>signOut(auth);
- $('#nt').onkeydown=e=>{if(e.key=='Enter'&&e.target.value.trim()){dd.tasks.push({n:e.target.value.trim(),x:0});sv();render();$('#nt').focus()}};
+ const addT=()=>{const v=$('#nt').value.trim();if(v){dd.tasks.push({n:v,x:0});sv();render();$('#nt').focus()}};$('#na').onclick=addT;$('#nt').onkeydown=e=>{if(e.key=='Enter')addT()};
  all('[data-ck]').forEach(el=>el.onchange=()=>{const i=+el.dataset.ck,t=dd.tasks[i];t.x=el.checked?1:0;sv();render();if(t.x)ask(t.n,W,W+1,0,b=>{dd.blocks.push({...b,k:i});sv();render()})});
  all('[data-mv]').forEach(el=>el.onclick=()=>{const t=pv.tasks[+el.dataset.mv];dd.tasks.push({n:t.n,x:0});t.m=1;saveDay(pd,pv);sv();render()});
  all('[data-add]').forEach(el=>el.onclick=()=>{const h=+el.dataset.add;ask('',h,h+1,0,b=>{dd.blocks.push(b);sv();render()})});

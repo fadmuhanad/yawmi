@@ -1,0 +1,135 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>يومي</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#EAEDE5"><link rel="icon" href="logo.png"><link rel="apple-touch-icon" href="icon-192.png">
+<style>
+@font-face{font-family:Plex;src:url('fonts/IBMPlexSansArabic-Regular.ttf');font-weight:400;font-display:swap}
+@font-face{font-family:Plex;src:url('fonts/IBMPlexSansArabic-SemiBold.ttf');font-weight:600;font-display:swap}
+@font-face{font-family:Zain;src:url('fonts/Zain-Bold.ttf');font-weight:700;font-display:swap}
+:root{--bg:#EAEDE5;--tx:#294B39;--mu:#6f8a7a;--bd:#d0d6ca;--hv:#dfe4d8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 Plex,system-ui,sans-serif}
+#app{max-width:760px;margin:auto;padding:20px 16px 24px}
+footer{max-width:760px;margin:0 auto;padding:24px 16px 48px;text-align:center;border-top:1px solid var(--bd);color:var(--mu)}
+footer .v{font-size:22px;line-height:2.1;color:var(--tx);font-weight:600}footer .s{font-size:13px}footer .q{margin-top:12px;font-size:16px;color:var(--tx)}
+h1{font-family:Zain,Plex,sans-serif;font-weight:700;font-size:36px;line-height:1.3;margin:8px 0}h2{font-size:15px;color:var(--mu);margin:28px 0 8px;font-weight:600}
+button,input,select,textarea{font:inherit;color:inherit}input[type=checkbox]{accent-color:#294B39}
+button{background:var(--hv);border:1px solid var(--bd);border-radius:6px;padding:4px 12px;cursor:pointer}
+input,select,textarea{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 8px;width:100%}
+textarea{min-height:110px;resize:vertical}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.bar{justify-content:space-between;margin-bottom:8px}
+.h{display:flex;border-top:1px solid var(--bd);min-height:38px}
+.h b{width:56px;color:var(--mu);font-weight:400;font-size:13px;padding-top:8px}
+.h div{flex:1;padding:6px 10px;border-radius:4px;cursor:pointer;color:var(--mu)}.h div.f{color:#fff}
+.t{display:flex;gap:8px;padding:4px 0;align-items:center}.t.d span{text-decoration:line-through;color:var(--mu)}
+.c{display:inline-block;width:12px;height:12px;border-radius:3px;margin-inline-end:6px}
+.box{max-width:340px;margin:12vh auto;text-align:center}.box>*{margin:10px 0}.box input{text-align:center}
+dialog{border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);width:min(92vw,380px)}dialog label{display:block;margin:8px 0;flex:1}
+</style></head><body><div id="app"></div>
+<footer><div class=v>﴿ إِنَّا لَا نُضِيعُ أَجْرَ مَنْ أَحْسَنَ عَمَلًا ﴾</div><div class=s>سورة الكهف، الآية 30</div><div class=q>«أحسِن عملك، ولا تستهن بسعيك.»</div></footer>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import{initializeFirestore,persistentLocalCache,doc,getDoc,setDoc}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+// ===== ألصق إعدادات Firebase هنا =====
+const firebaseConfig={apiKey:"",authDomain:"",projectId:"",appId:""};
+// =====================================
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=initializeFirestore(app,{localCache:persistentLocalCache()});
+const $=s=>document.querySelector(s),A=$('#app'),te=new TextEncoder,td=new TextDecoder;
+const b64=u=>btoa(String.fromCharCode(...u)),ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const dk=d=>d.toLocaleDateString('en-CA'),fmt=h=>(h%12||12)+(h<12||h==24?' ص':' م');
+const fd=d=>d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',day:'numeric',month:'long'});
+const hp=(id,h,p)=>`<div class=row><select id=${id}h>${[...Array(12)].map((_,i)=>`<option ${i+1==h?'selected':''}>${i+1}</option>`).join('')}</select><select id=${id}p><option ${p=='ص'?'selected':''}>ص</option><option ${p=='م'?'selected':''}>م</option></select></div>`;
+const PAL=['#294B39','#4F7A5E','#86A38F','#6E7F4C','#A89B6B','#5E7A74'],OLD=['#3d7a5a','#c08a2e','#b5533c','#4a6fa5','#7a5c8e','#8a8f3c'];
+const ink=c=>{const n=parseInt(c.slice(1),16);return .299*(n>>16)+.587*(n>>8&255)+.114*(n&255)>150?'#294B39':'#fff'},cc=b=>S.cats[b.c]?.c||'#86A38F';
+const EM={'عمل':'💼','تعلّم':'📚','تعلم':'📚','راحة':'🧘','رياضة':'🏃'};
+let W,Z;
+let U,S,date=new Date(),dd,pv,pd;
+async function E(o){const iv=crypto.getRandomValues(new Uint8Array(12));return b64(iv)+'.'+b64(new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},K,te.encode(JSON.stringify(o)))))}
+async function D(s){const[i,c]=s.split('.');return JSON.parse(td.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(i)},K,ub(c))))}
+async function kd(p,salt){const m=await crypto.subtle.importKey('raw',te.encode(p),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+const ref=(...p)=>doc(db,'users',U.uid,...p);
+const loadDay=async d=>{const s=await getDoc(ref('days',dk(d)));return s.exists()?await D(s.data().d):{tasks:[],blocks:[],learned:'',worked:''}};
+const saveDay=async(d,x)=>setDoc(ref('days',dk(d)),{d:await E(x)});
+const saveS=async()=>setDoc(ref('meta','s'),{s:SALT,c:await E(S)});
+const sv=()=>saveDay(date,dd);
+
+let PW=null,SALT=null,K=null,mode='in';
+const mail=u=>u.toLowerCase()+'@yawmi.local';
+const WARN='<p style="font-size:13px;color:var(--mu);margin-top:18px;line-height:1.9">🔒 بياناتك مشفّرة ولا يستطيع أحد رؤيتها غيرك، وهي محفوظة لك.<br>في حال نسيت كلمة المرور فلا يمكن استرجاع بياناتك.</p>';
+const LOGO='<img src="logo.png" width=96 height=96 alt="" style="border-radius:22px">';
+onAuthStateChanged(auth,u=>{U=u;if(!u){K=null;PW=null;return login()}PW?unlock():askpw()});
+function login(){
+ const nw=mode=='new',B='style="font-weight:600"';
+ A.innerHTML=`<div class=box>${LOGO}<h1>يومي</h1><p>خطّط يومك وسجّل وقتك الفعلي</p>
+ <div class=row style="justify-content:center"><button id=tin ${nw?'':B}>دخول</button><button id=tnw ${nw?B:''}>حساب جديد</button></div>
+ <input id=un placeholder="اسم المستخدم (بالإنجليزي)" autocapitalize=off autocomplete=username dir=ltr>
+ <input id=pw type=password placeholder="كلمة المرور" autocomplete=${nw?'new-password':'current-password'}>${nw?'<input id=pw2 type=password placeholder="تأكيد كلمة المرور" autocomplete=new-password>':''}
+ <button id=go1>${nw?'إنشاء الحساب':'دخول'}</button>${WARN}</div>`;
+ $('#tin').onclick=()=>{mode='in';login()};$('#tnw').onclick=()=>{mode='new';login()};
+ A.querySelectorAll('input').forEach(i=>i.onkeydown=e=>{if(e.key=='Enter')$('#go1').click()});
+ $('#go1').onclick=async()=>{const u=$('#un').value.trim(),p=$('#pw').value;
+  if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return alert('اسم المستخدم: حروف إنجليزية وأرقام وشرطة سفلية فقط، من 3 إلى 20 خانة');
+  if(nw){if(p.length<8)return alert('كلمة المرور لازم تكون 8 أحرف على الأقل');if(p!==$('#pw2').value)return alert('تأكيد كلمة المرور غير مطابق')}
+  PW=p;try{await(nw?createUserWithEmailAndPassword:signInWithEmailAndPassword)(auth,mail(u),p)}catch(e){PW=null;const bad='اسم المستخدم أو كلمة المرور غير صحيحة';alert({'auth/email-already-in-use':'اسم المستخدم مستخدم، اختر اسماً آخر','auth/invalid-credential':bad,'auth/wrong-password':bad,'auth/user-not-found':bad,'auth/too-many-requests':'محاولات كثيرة، حاول لاحقاً'}[e.code]||e.message)}
+ }
+}
+function askpw(){
+ A.innerHTML=`<div class=box>${LOGO}<h1>أهلاً بعودتك</h1><p>أدخل كلمة المرور لفتح بياناتك</p><input id=pw type=password autocomplete=current-password><button id=ok>فتح</button><button id=so>خروج</button>${WARN}</div>`;
+ $('#so').onclick=()=>signOut(auth);$('#ok').onclick=()=>{PW=$('#pw').value;unlock()};$('#pw').onkeydown=e=>{if(e.key=='Enter')$('#ok').click()};
+}
+async function unlock(){
+ A.innerHTML='<p class=box>جاري التحميل…</p>';
+ const s=await getDoc(ref('meta','s'));
+ if(!s.exists()){
+  A.innerHTML=`<div class=box><h1>إعداد أولي</h1><p>وقت الاستيقاظ</p>${hp('w',6,'ص')}<p>وقت النوم</p>${hp('s',10,'م')}<button id=ok>ابدأ</button></div>`;
+  $('#ok').onclick=async()=>{const g=i=>{const h=+$('#'+i+'h').value;return $('#'+i+'p').value=='م'?h%12+12:h%12},w=g('w');let e=g('s');if(e==0)e=24;if(e<=w)return alert('وقت النوم لازم يكون بعد الاستيقاظ');
+   SALT=b64(crypto.getRandomValues(new Uint8Array(16)));K=await kd(PW,ub(SALT));S={w,s:e,cats:[{n:'عمل',c:PAL[0],e:'💼'},{n:'تعلّم',c:PAL[1],e:'📚'},{n:'راحة',c:PAL[2],e:'🧘'},{n:'رياضة',c:PAL[3],e:'🏃'}]};await saveS();go()}
+ }else{
+  try{SALT=s.data().s;K=await kd(PW,ub(SALT));S=await D(s.data().c)}catch{K=null;PW=null;alert('كلمة المرور غير صحيحة');return askpw()}
+  go()
+ }
+}
+async function go(){pd=new Date(date);pd.setDate(pd.getDate()-1);[dd,pv]=await Promise.all([loadDay(date),loadDay(pd)]);render()}
+function ask(x,f,t,c,ok){
+ const d=document.createElement('dialog'),o=(v)=>{let s='';for(let i=W;i<=Z;i++)s+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return s},q=s=>d.querySelector(s);
+ d.innerHTML=`<label>الوصف<input id=ax value="${esc(x)}"></label><div class=row><label>من<select id=af>${o(f)}</select></label><label>إلى<select id=at>${o(t)}</select></label></div><label>التصنيف<select id=ac>${S.cats.map((k,i)=>`<option value=${i} ${i==c?'selected':''}>${k.e||''} ${esc(k.n)}</option>`).join('')}</select></label><div class=row><button id=ok>حفظ</button><button id=no>إلغاء</button></div>`;
+ document.body.append(d);d.showModal();q('#no').onclick=()=>d.remove();
+ q('#ok').onclick=()=>{const f=+q('#af').value,t=+q('#at').value;if(t<=f)return alert('وقت النهاية لازم يكون بعد البداية');ok({x:q('#ax').value,f,t,c:+q('#ac').value});d.remove()}
+}
+function render(){
+ W=dd.w??S.w;Z=dd.s??S.s;const hs=[];for(let h=W;h<Z;h++)hs.push(h);const op=(a,b,v)=>{let o='';for(let i=a;i<=b;i++)o+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return o};const un=pv.tasks.filter(t=>!t.x&&!t.m);
+ A.innerHTML=`<div class=row style="gap:10px;margin-bottom:12px"><img src="logo.png" width=40 height=40 alt="" style="border-radius:10px"><b style="font-family:Zain,Plex,sans-serif;font-size:24px">يومي</b></div><div class="row bar"><div class=row><button id=pb>اليوم السابق</button><button id=tb>اليوم</button><button id=nb>اليوم التالي</button></div><div class=row><button id=wk>تقرير الأسبوع</button><button id=so>خروج</button></div></div>
+ <h1>${fd(date)}</h1>
+ <div class=row><span>صحيت الساعة</span><select id=dw style="width:auto">${op(0,23,W)}</select><span>أنام الساعة</span><select id=dz style="width:auto">${op(1,24,Z)}</select></div>
+ ${un.length?'<h2>مهام أمس لم تنجز</h2>'+pv.tasks.map((t,i)=>!t.x&&!t.m?`<div class=t><span>${esc(t.n)}</span><button data-mv=${i}>انقلها لليوم</button></div>`:'').join(''):''}
+ <h2>مهام اليوم</h2>${dd.tasks.map((t,i)=>`<div class="t ${t.x?'d':''}"><input type=checkbox style="width:auto" data-ck=${i} ${t.x?'checked':''}><span>${esc(t.n)}</span></div>`).join('')}
+ <input id=nt placeholder="+ مهمة جديدة (Enter)">
+ <h2>جدول الساعات</h2>${hs.map(h=>{const i=dd.blocks.findIndex(b=>b.f<=h&&h<b.t),b=dd.blocks[i];return`<div class=h><b>${fmt(h)}</b>${b?`<div class=f style="background:${cc(b)};color:${ink(cc(b))}" data-eb=${i}>${S.cats[b.c]?.e||''} ${esc(b.x)}</div>`:`<div data-add=${h}>+</div>`}</div>`}).join('')}
+ <h2>التصنيفات</h2>${S.cats.map((k,i)=>`<div class=row data-cat=${i} style="margin-bottom:6px"><input value="${esc(k.e||'')}" maxlength=8 style="width:56px;text-align:center"><input type=color value="${k.c}" style="width:44px;height:34px;padding:2px"><input value="${esc(k.n)}" style="flex:1"></div>`).join('')}<div class=row><button id=ac>+ تصنيف</button></div>
+ <h2>وش تعلمت اليوم</h2><textarea id=ln placeholder="اكتب /عنوان أو /قائمة أو /مهمة ثم مسافة"></textarea>
+ <h2>وش اشتغلت اليوم</h2><textarea id=wr></textarea>`;
+ const go2=n=>{date.setDate(date.getDate()+n);go()},all=s=>A.querySelectorAll(s);
+ $('#pb').onclick=()=>go2(-1);$('#nb').onclick=()=>go2(1);$('#tb').onclick=()=>{date=new Date();go()};$('#wk').onclick=report;$('#so').onclick=()=>signOut(auth);
+ $('#nt').onkeydown=e=>{if(e.key=='Enter'&&e.target.value.trim()){dd.tasks.push({n:e.target.value.trim(),x:0});sv();render();$('#nt').focus()}};
+ all('[data-ck]').forEach(el=>el.onchange=()=>{const i=+el.dataset.ck,t=dd.tasks[i];t.x=el.checked?1:0;sv();render();if(t.x)ask(t.n,W,W+1,0,b=>{dd.blocks.push({...b,k:i});sv();render()})});
+ all('[data-mv]').forEach(el=>el.onclick=()=>{const t=pv.tasks[+el.dataset.mv];dd.tasks.push({n:t.n,x:0});t.m=1;saveDay(pd,pv);sv();render()});
+ all('[data-add]').forEach(el=>el.onclick=()=>{const h=+el.dataset.add;ask('',h,h+1,0,b=>{dd.blocks.push(b);sv();render()})});
+ all('[data-eb]').forEach(el=>el.onclick=()=>{if(confirm('حذف هذه الفترة؟')){dd.blocks.splice(+el.dataset.eb,1);sv();render()}});
+ $('#dw').onchange=e=>{const v=+e.target.value;if(v>=Z){alert('وقت الاستيقاظ لازم يكون قبل وقت النوم');return render()}dd.w=v;sv();render()};
+ $('#dz').onchange=e=>{const v=+e.target.value;if(v<=W){alert('وقت النوم لازم يكون بعد الاستيقاظ');return render()}dd.s=v;sv();render()};
+ all('[data-cat]').forEach(r=>{const i=+r.dataset.cat,[e,c,n]=r.querySelectorAll('input');e.onchange=()=>{S.cats[i].e=e.value.trim();saveS();render()};c.onchange=()=>{S.cats[i].c=c.value;saveS();render()};n.onchange=()=>{S.cats[i].n=n.value.trim()||S.cats[i].n;saveS();render()}});
+ $('#ac').onclick=()=>{const n=prompt('اسم التصنيف');if(n){const e=prompt('إيموجي التصنيف (اختياري)','🔖');S.cats.push({n,c:PAL[S.cats.length%PAL.length],e:(e||'').trim()});saveS();render()}};
+ const M={'عنوان':'# ','قائمة':'• ','مهمة':'☐ '};let tm;
+ [['#ln','learned'],['#wr','worked']].forEach(([s,k])=>{const e=$(s);e.value=dd[k];e.oninput=()=>{const v=e.value.replace(/(^|\n)\/(عنوان|قائمة|مهمة) /g,(m,a,w)=>a+M[w]);if(v!=e.value)e.value=v;dd[k]=v;clearTimeout(tm);tm=setTimeout(sv,600)}});
+}
+async function report(){
+ A.innerHTML='<p class=box>جاري التحميل…</p>';
+ const d0=new Date(date);d0.setDate(d0.getDate()-d0.getDay());
+ const ds=await Promise.all([...Array(7)].map((_,i)=>{const d=new Date(d0);d.setDate(d.getDate()+i);return loadDay(d).then(x=>({d,x}))}));
+ const sum={};let tot=0;ds.forEach(({x})=>x.blocks.forEach(b=>{sum[b.c]=(sum[b.c]||0)+b.t-b.f;tot+=b.t-b.f}));const all=ds.reduce((a,{x})=>a+((x.s??S.s)-(x.w??S.w)),0);
+ A.innerHTML=`<button id=bk>رجوع</button><h1>تقرير الأسبوع</h1><p>سجّلت ${tot} من ${all} ساعة، وغير المسجّل ${all-tot} ساعة.</p>
+ <h2>حسب التصنيف</h2>${S.cats.map((k,i)=>`<div><span class=c style="background:${k.c}"></span>${k.e||''} ${esc(k.n)}: ${sum[i]||0} ساعة</div>`).join('')}
+ <h2>الأنشطة</h2>${ds.map(({d,x})=>x.blocks.length?`<p><b>${fd(d)}</b><br>${x.blocks.map(b=>`${fmt(b.f)} – ${fmt(b.t)}: ${S.cats[b.c]?.e||''} ${esc(b.x)}`).join('<br>')}</p>`:'').join('')||'<p>ما فيه أنشطة مسجّلة بعد.</p>'}`;
+ $('#bk').onclick=render;
+}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>

@@ -29,7 +29,7 @@ import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-ap
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import{initializeFirestore,persistentLocalCache,doc,getDoc,setDoc}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 // ===== ألصق إعدادات Firebase هنا =====
-const firebaseConfig={apiKey:"",authDomain:"",projectId:"",appId:""};
+const firebaseConfig={apiKey:"AIzaSyArkWsl-oWgB-fpgbUpowW9EwNI75Ag3FM",authDomain:"yawmi-b2f3e.firebaseapp.com",projectId:"yawmi-b2f3e",storageBucket:"yawmi-b2f3e.firebasestorage.app",messagingSenderId:"179169548896",appId:"1:179169548896:web:3b83f4da9028f66c338105"};
 // =====================================
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=initializeFirestore(app,{localCache:persistentLocalCache()});
 const $=s=>document.querySelector(s),A=$('#app'),te=new TextEncoder,td=new TextDecoder;

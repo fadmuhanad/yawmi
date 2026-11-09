@@ -20,12 +20,13 @@ input,select,textarea{background:var(--bg);border:1px solid var(--bd);border-rad
 textarea{min-height:110px;resize:vertical}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.bar{justify-content:space-between;margin-bottom:8px}
 .h{display:flex;border-top:1px solid var(--bd);min-height:38px}
-.h b{width:56px;color:var(--mu);font-weight:400;font-size:13px;padding-top:8px}
+.h b{width:76px;color:var(--mu);font-weight:400;font-size:13px;padding-top:8px}
 .h div{flex:1;padding:6px 10px;border-radius:4px;cursor:pointer;color:var(--mu)}.h div.f{color:#fff}
-.t{display:flex;gap:8px;padding:4px 0;align-items:center}.t.d span{text-decoration:line-through;color:var(--mu)}
+.t{display:flex;gap:8px;padding:4px 0;align-items:center}.t.d span:not([data-h]){text-decoration:line-through;color:var(--mu)}
 .c{display:inline-block;width:12px;height:12px;border-radius:3px;margin-inline-end:6px}
 .box{max-width:340px;margin:12vh auto;text-align:center}.box>*{margin:10px 0}.box input{text-align:center}
 dialog{border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);width:min(92vw,380px)}dialog label{display:block;margin:8px 0;flex:1}
+dialog{max-height:85vh;overflow:auto}
 </style></head><body><div id="app"></div>
 <footer><div class=v>﴿ إِنَّا لَا نُضِيعُ أَجْرَ مَنْ أَحْسَنَ عَمَلًا ﴾</div><div class=s>سورة الكهف، الآية 30</div><div class=q>«أحسِن عملك، ولا تستهن بسعيك.»</div></footer>
 <script type="module">
@@ -39,20 +40,21 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=initializeFirestore
 const $=s=>document.querySelector(s),A=$('#app'),te=new TextEncoder,td=new TextDecoder;
 const b64=u=>btoa(String.fromCharCode(...u)),ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
-const dk=d=>d.toLocaleDateString('en-CA'),fmt=h=>(h%12||12)+(h<12||h==24?' ص':' م');
+const dk=d=>d.toLocaleDateString('en-CA'),fmt=h=>{const x=h%24;return (x%12||12)+(x<12?' ص':' م')+(h>=24?' 🌙':'')};
 const fd=d=>d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',day:'numeric',month:'long'});
 const hp=(id,h,p)=>`<div class=row><select id=${id}h>${[...Array(12)].map((_,i)=>`<option ${i+1==h?'selected':''}>${i+1}</option>`).join('')}</select><select id=${id}p><option ${p=='ص'?'selected':''}>ص</option><option ${p=='م'?'selected':''}>م</option></select></div>`;
 const PAL=['#294B39','#4F7A5E','#86A38F','#6E7F4C','#A89B6B','#5E7A74'],OLD=['#3d7a5a','#c08a2e','#b5533c','#4a6fa5','#7a5c8e','#8a8f3c'];
 const ink=c=>{const n=parseInt(c.slice(1),16);return .299*(n>>16)+.587*(n>>8&255)+.114*(n&255)>150?'#294B39':'#fff'},cc=b=>S.cats[b.c]?.c||'#86A38F';
 const EM={'عمل':'💼','تعلّم':'📚','تعلم':'📚','راحة':'🧘','رياضة':'🏃'};
-let W,Z;
+let W,Z,EI=-1;
 let U,S,date=new Date(),dd,pv,pd;
 async function E(o){const iv=crypto.getRandomValues(new Uint8Array(12));return b64(iv)+'.'+b64(new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},K,te.encode(JSON.stringify(o)))))}
 async function D(s){const[i,c]=s.split('.');return JSON.parse(td.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(i)},K,ub(c))))}
 async function kd(p,salt){const m=await crypto.subtle.importKey('raw',te.encode(p),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 const ref=(...p)=>doc(db,'users',U.uid,...p);
 let cache={};
-const loadDay=d=>{const k=dk(d);return cache[k]=cache[k]||(async()=>{const s=await getDoc(ref('days',k));return s.exists()?await D(s.data().d):{tasks:[],blocks:[],learned:'',worked:''}})()};
+const applyRec=(d,x)=>{const k=dk(d),g=d.getDay();x.ra=x.ra||[];(S.rec||[]).forEach(r=>{if(!x.ra.includes(r.id)&&r.d.includes(g)&&r.c<=k){x.ra.push(r.id);x.tasks.push({n:r.n,x:0,r:r.id})}});return x};
+const loadDay=d=>{const k=dk(d);return cache[k]=cache[k]||(async()=>{const s=await getDoc(ref('days',k));return applyRec(d,s.exists()?await D(s.data().d):{tasks:[],blocks:[],learned:'',worked:''})})()};
 const saveDay=async(d,x)=>{cache[dk(d)]=Promise.resolve(x);return setDoc(ref('days',dk(d)),{d:await E(x)})};
 const saveS=async()=>setDoc(ref('meta','s'),{s:SALT,c:await E(S)});
 const sv=()=>saveDay(date,dd);
@@ -86,14 +88,14 @@ async function unlock(){
  const s=await getDoc(ref('meta','s'));
  if(!s.exists()){
   A.innerHTML=`<div class=box><h1>إعداد أولي</h1><p>وقت الاستيقاظ</p>${hp('w',6,'ص')}<p>وقت النوم</p>${hp('s',10,'م')}<button id=ok>ابدأ</button></div>`;
-  $('#ok').onclick=async()=>{const g=i=>{const h=+$('#'+i+'h').value;return $('#'+i+'p').value=='م'?h%12+12:h%12},w=g('w');let e=g('s');if(e==0)e=24;if(e<=w)return alert('وقت النوم لازم يكون بعد الاستيقاظ');
+  $('#ok').onclick=async()=>{const g=i=>{const h=+$('#'+i+'h').value;return $('#'+i+'p').value=='م'?h%12+12:h%12},w=g('w');let e=g('s');if(e<=w)e+=24;
    SALT=b64(crypto.getRandomValues(new Uint8Array(16)));K=await kd(PW,ub(SALT));S={w,s:e,cats:[{n:'عمل',c:PAL[0],e:'💼'},{n:'تعلّم',c:PAL[1],e:'📚'},{n:'راحة',c:PAL[2],e:'🧘'},{n:'رياضة',c:PAL[3],e:'🏃'}]};await saveS();go()}
  }else{
   try{SALT=s.data().s;K=await kd(PW,ub(SALT));S=await D(s.data().c)}catch{K=null;PW=null;alert('كلمة المرور غير صحيحة');return askpw()}
   go()
  }
 }
-async function go(){pd=new Date(date);pd.setDate(pd.getDate()-1);[dd,pv]=await Promise.all([loadDay(date),loadDay(pd)]);render()}
+async function go(){EI=-1;pd=new Date(date);pd.setDate(pd.getDate()-1);[dd,pv]=await Promise.all([loadDay(date),loadDay(pd)]);render()}
 function ask(x,f,t,c,ok){
  const d=document.createElement('dialog'),o=(v)=>{let s='';for(let i=W;i<=Z;i++)s+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return s},q=s=>d.querySelector(s);
  d.innerHTML=`<label>الوصف<input id=ax value="${esc(x)}"></label><div class=row><label>من<select id=af>${o(f)}</select></label><label>إلى<select id=at>${o(t)}</select></label></div><label>التصنيف<select id=ac>${S.cats.map((k,i)=>`<option value=${i} ${i==c?'selected':''}>${k.e||''} ${esc(k.n)}</option>`).join('')}</select></label><div class=row><button id=ok>حفظ</button><button id=no>إلغاء</button></div>`;
@@ -101,13 +103,14 @@ function ask(x,f,t,c,ok){
  q('#ok').onclick=()=>{const f=+q('#af').value,t=+q('#at').value;if(t<=f)return alert('وقت النهاية لازم يكون بعد البداية');ok({x:q('#ax').value,f,t,c:+q('#ac').value});d.remove()}
 }
 function render(){
- W=dd.w??S.w;Z=dd.s??S.s;const hs=[];for(let h=W;h<Z;h++)hs.push(h);const op=(a,b,v)=>{let o='';for(let i=a;i<=b;i++)o+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return o};const un=pv.tasks.filter(t=>!t.x&&!t.m);
+ W=dd.w??S.w;Z=dd.s??S.s;const hs=[];for(let h=W;h<Z;h++)hs.push(h);const op=(a,b,v)=>{let o='';for(let i=a;i<=b;i++)o+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return o};const un=pv.tasks.filter(t=>!t.x&&!t.m&&!t.r);
  A.innerHTML=`<div class=row style="gap:10px;margin-bottom:12px"><img src="logo.png" width=40 height=40 alt="" style="border-radius:10px"><b style="font-size:24px">يومي</b></div><div class="row bar"><div class=row><button id=pb>اليوم السابق</button><button id=tb>اليوم</button><button id=nb>اليوم التالي</button></div><div class=row><button id=mb>📅 ${date.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long'})}</button><button id=wk>تقرير الأسبوع</button><button id=so>خروج</button></div></div>
  <h1>${fd(date)}</h1>
- <div class=row><span>صحيت الساعة</span><select id=dw style="width:auto">${op(0,23,W)}</select><span>أنام الساعة</span><select id=dz style="width:auto">${op(1,24,Z)}</select></div>
- ${un.length?'<h2>مهام أمس لم تنجز</h2>'+pv.tasks.map((t,i)=>!t.x&&!t.m?`<div class=t><span style="flex:1">${esc(t.n)}</span><button data-mv=${i}>انقلها لليوم</button><button data-dp=${i} title="حذف">🗑</button></div>`:'').join(''):''}
- <h2>مهام اليوم</h2>${dd.tasks.map((t,i)=>`<div class="t ${t.x?'d':''}"><input type=checkbox style="width:auto" data-ck=${i} ${t.x?'checked':''}><span style="flex:1">${esc(t.n)}</span><button data-dt=${i} title="حذف">🗑</button></div>`).join('')}
+ <div class=row><span>صحيت الساعة</span><select id=dw style="width:auto">${op(0,23,W)}</select><span>أنام الساعة</span><select id=dz style="width:auto">${op(W+1,W+24,Z)}</select></div>
+ ${un.length?'<h2>مهام أمس لم تنجز</h2>'+pv.tasks.map((t,i)=>!t.x&&!t.m&&!t.r?`<div class=t><span style="flex:1">${esc(t.n)}</span><button data-mv=${i}>انقلها لليوم</button><button data-dp=${i} title="حذف">🗑</button></div>`:'').join(''):''}
+ <h2>مهام اليوم</h2>${dd.tasks.map((t,i)=>`<div class="t ${t.x?'d':''}" data-row=${i}><span data-h=${i} title="اسحب لإعادة الترتيب" style="cursor:grab;touch-action:none;user-select:none;color:var(--mu);padding:0 2px">⋮⋮</span><input type=checkbox style="width:auto" data-ck=${i} ${t.x?'checked':''}>${EI===i?`<input class=ei value="${esc(t.n)}" style="flex:1">`:`<span style="flex:1">${t.r?'🔁 ':''}${esc(t.n)}</span>`}<button data-et=${i} title="تعديل">✏️</button><button data-dt=${i} title="حذف">🗑</button></div>`).join('')}
  <div class=row style="flex-wrap:nowrap"><input id=nt placeholder="+ مهمة جديدة" style="flex:1"><button id=na style="background:var(--tx);color:var(--bg);border-color:var(--tx);padding:6px 18px">إضافة</button></div>
+ <div class=row style="margin-top:8px"><button id=rc>🔁 المهام المتكررة</button></div>
  <h2>جدول الساعات</h2>${hs.map(h=>{const i=dd.blocks.findIndex(b=>b.f<=h&&h<b.t),b=dd.blocks[i];return`<div class=h><b>${fmt(h)}</b>${b?`<div class=f style="background:${cc(b)};color:${ink(cc(b))}" data-eb=${i}>${S.cats[b.c]?.e||''} ${esc(b.x)}</div>`:`<div data-add=${h}>+</div>`}</div>`}).join('')}
  <h2>التصنيفات</h2>${S.cats.map((k,i)=>`<div class=row data-cat=${i} style="margin-bottom:6px"><input value="${esc(k.e||'')}" maxlength=8 style="width:56px;text-align:center"><input type=color value="${k.c}" style="width:44px;height:34px;padding:2px"><input value="${esc(k.n)}" style="flex:1"></div>`).join('')}<div class=row><button id=ac>+ تصنيف</button></div>
  <h2>وش تعلمت اليوم</h2><textarea id=ln placeholder="اكتب /عنوان أو /قائمة أو /مهمة ثم مسافة"></textarea>
@@ -119,10 +122,17 @@ function render(){
  all('[data-mv]').forEach(el=>el.onclick=()=>{const t=pv.tasks[+el.dataset.mv];dd.tasks.push({n:t.n,x:0});t.m=1;saveDay(pd,pv);sv();render()});
  all('[data-add]').forEach(el=>el.onclick=()=>{const h=+el.dataset.add;ask('',h,h+1,0,b=>{dd.blocks.push(b);sv();render()})});
  all('[data-eb]').forEach(el=>el.onclick=()=>{if(confirm('حذف هذه الفترة؟')){dd.blocks.splice(+el.dataset.eb,1);sv();render()}});
+ $('#rc').onclick=recDlg;
+ all('[data-et]').forEach(el=>el.onclick=()=>{EI=+el.dataset.et;render()});
+ if(EI>=0){const inp=A.querySelector('.ei');if(inp){inp.focus();inp.select();inp.onkeydown=e=>{if(e.key=='Enter')inp.blur();if(e.key=='Escape'){EI=-1;render()}};inp.onblur=()=>{if(EI<0)return;const v=inp.value.trim(),i=EI;EI=-1;if(v&&dd.tasks[i]){dd.tasks[i].n=v;sv()}render()}}}
+ all('[data-h]').forEach(h=>{h.onpointerdown=e=>{e.preventDefault();const from=+h.dataset.h,rows=[...A.querySelectorAll('[data-row]')];let to=from,pos=0;h.setPointerCapture(e.pointerId);rows[from].style.opacity=.5;
+  h.onpointermove=ev=>{rows.forEach(r=>r.style.boxShadow='none');const el=document.elementFromPoint(ev.clientX,ev.clientY),r=el&&el.closest('[data-row]');if(!r)return;const b=r.getBoundingClientRect();pos=ev.clientY>b.top+b.height/2?1:0;to=+r.dataset.row;r.style.boxShadow=pos?'0 2px 0 var(--tx)':'0 -2px 0 var(--tx)'};
+  h.onpointercancel=()=>render();
+  h.onpointerup=()=>{h.onpointermove=h.onpointerup=null;let t=to+pos;if(from<t)t--;if(t!=from){const[x]=dd.tasks.splice(from,1);dd.tasks.splice(t,0,x);sv()}render()}}});
  all('[data-dt]').forEach(el=>el.onclick=()=>{const i=+el.dataset.dt;if(confirm('حذف المهمة «'+dd.tasks[i].n+'»؟')){dd.tasks.splice(i,1);sv();render()}});
  all('[data-dp]').forEach(el=>el.onclick=()=>{const i=+el.dataset.dp;if(confirm('حذف المهمة «'+pv.tasks[i].n+'»؟')){pv.tasks.splice(i,1);saveDay(pd,pv);render()}});
- $('#dw').onchange=e=>{const v=+e.target.value;if(v>=Z){alert('وقت الاستيقاظ لازم يكون قبل وقت النوم');return render()}dd.w=v;sv();render()};
- $('#dz').onchange=e=>{const v=+e.target.value;if(v<=W){alert('وقت النوم لازم يكون بعد الاستيقاظ');return render()}dd.s=v;sv();render()};
+ $('#dw').onchange=e=>{const v=+e.target.value;let z=Z;if(z<=v)z+=24;if(z>v+24)z=v+24;dd.w=v;dd.s=z;sv();render()};
+ $('#dz').onchange=e=>{dd.s=+e.target.value;sv();render()};
  all('[data-cat]').forEach(r=>{const i=+r.dataset.cat,[e,c,n]=r.querySelectorAll('input');e.onchange=()=>{S.cats[i].e=e.value.trim();saveS();render()};c.onchange=()=>{S.cats[i].c=c.value;saveS();render()};n.onchange=()=>{S.cats[i].n=n.value.trim()||S.cats[i].n;saveS();render()}});
  $('#ac').onclick=()=>{const n=prompt('اسم التصنيف');if(n){const e=prompt('إيموجي التصنيف (اختياري)','🔖');S.cats.push({n,c:PAL[S.cats.length%PAL.length],e:(e||'').trim()});saveS();render()}};
  const M={'عنوان':'# ','قائمة':'• ','مهمة':'☐ '};let tm;
@@ -136,6 +146,28 @@ const ld=async d=>({d,x:await loadDay(d)});
 const shortD=d=>d.toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'short'});
 const BX='border:1px solid var(--bd);border-radius:10px;padding:12px;cursor:pointer;background:var(--hv)',GR='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px';
 const pd0=s=>new Date(s+'T00:00:00');
+function recDlg(){
+ S.rec=S.rec||[];
+ const dlg=document.createElement('dialog'),DN=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];let eid=null,sel=[],nm='';
+ const refresh=async()=>{await saveS();await Promise.all(Object.entries(cache).map(([k,p])=>p.then(x=>applyRec(pd0(k),x))));sv();render()};
+ const draw=()=>{
+  dlg.innerHTML=`<h2 style="margin:0 0 8px">المهام المتكررة</h2>${S.rec.map((r,i)=>`<div class=t><span style="flex:1">${esc(r.n)}<br><small style="color:var(--mu)">${r.d.map(x=>DN[x]).join('، ')}</small></span><button data-e=${i}>✏️</button><button data-x=${i}>🗑</button></div>`).join('')||'<p style="color:var(--mu)">ما فيه مهام متكررة بعد.</p>'}
+  <h2>${eid===null?'مهمة متكررة جديدة':'تعديل المهمة'}</h2><input id=rn placeholder="اكتب المهمة" value="${esc(nm)}">
+  <div class=row style="margin:10px 0">${DN.map((n,i)=>`<button data-d=${i} style="${sel.includes(i)?'background:var(--tx);color:var(--bg)':''}">${n}</button>`).join('')}<button id=ra>كل الأيام</button></div>
+  <div class=row><button id=rs style="background:var(--tx);color:var(--bg)">${eid===null?'إضافة':'حفظ'}</button><button id=rx>إغلاق</button></div>`;
+  const q=x=>dlg.querySelector(x);
+  q('#rn').oninput=e=>nm=e.target.value;
+  dlg.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{nm=q('#rn').value;const i=+b.dataset.d;sel=sel.includes(i)?sel.filter(x=>x!=i):[...sel,i];draw()});
+  q('#ra').onclick=()=>{nm=q('#rn').value;sel=[0,1,2,3,4,5,6];draw()};
+  dlg.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{const r=S.rec[+b.dataset.e];eid=r.id;nm=r.n;sel=[...r.d];draw()});
+  dlg.querySelectorAll('[data-x]').forEach(b=>b.onclick=async()=>{const i=+b.dataset.x;if(confirm('حذف المهمة المتكررة «'+S.rec[i].n+'»؟ المهام اللي انضافت قبل للأيام تبقى.')){S.rec.splice(i,1);eid=null;nm='';sel=[];await saveS();draw()}});
+  q('#rx').onclick=()=>dlg.remove();
+  q('#rs').onclick=async()=>{const n=q('#rn').value.trim();if(!n)return alert('اكتب اسم المهمة');if(!sel.length)return alert('اختر يوماً واحداً على الأقل');
+   if(eid===null)S.rec.push({id:Date.now().toString(36),n,d:[...sel].sort(),c:dk(new Date())});else{const r=S.rec.find(r=>r.id==eid);r.n=n;r.d=[...sel].sort()}
+   eid=null;nm='';sel=[];await refresh();draw()};
+ };
+ document.body.append(dlg);dlg.showModal();draw();
+}
 async function report(from){
  A.innerHTML='<p class=box>جاري التحميل…</p>';
  const d0=wkStart(from),ds=await Promise.all([...Array(7)].map((_,i)=>ld(addD(d0,i))));

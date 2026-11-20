@@ -21,9 +21,12 @@ button{background:var(--hv);border:1px solid var(--bd);border-radius:6px;padding
 input,select,textarea{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 8px;width:100%}
 textarea{min-height:110px;resize:vertical}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.bar{justify-content:space-between;margin-bottom:8px}
-.h{display:flex;border-top:1px solid var(--bd);min-height:38px}
-.h b{width:76px;color:var(--mu);font-weight:400;font-size:13px;padding-top:8px}
-.h div{flex:1;padding:6px 10px;border-radius:4px;cursor:pointer;color:var(--mu)}.h div.f{color:#fff}
+.h{display:flex;border-top:1px solid var(--bd);height:48px;min-height:48px;position:relative}
+.h b{width:76px;flex:0 0 76px;color:var(--mu);font-weight:400;font-size:13px;padding-top:8px}
+.h div{flex:1;padding:6px 10px;border-radius:4px;cursor:pointer;color:var(--mu)}
+.schedule{position:relative;overflow:hidden}
+.time-block{position:absolute;right:76px;left:0;z-index:2;border-radius:5px;padding:3px 9px;overflow:hidden;cursor:pointer;font-size:13px;line-height:1.5;border:1px solid #ffffff40;box-shadow:0 1px 3px #0002}
+.time-block small{display:block;font-size:11px;opacity:.9}
 .t{display:flex;gap:8px;padding:4px 0;align-items:center}.t.d span:not([data-h]){text-decoration:line-through;color:var(--mu)}
 .c{display:inline-block;width:12px;height:12px;border-radius:3px;margin-inline-end:6px}
 .box{max-width:340px;margin:12vh auto;text-align:center}.box>*{margin:10px 0}.box input{text-align:center}
@@ -44,7 +47,7 @@ const setTheme=mode=>{const dark=mode==='dark';document.documentElement.dataset.
 setTheme(localStorage.getItem('yawmi-theme')||'light');
 const b64=u=>btoa(String.fromCharCode(...u)),ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
-const dk=d=>d.toLocaleDateString('en-CA'),fmt=h=>{const x=h%24;return (x%12||12)+(x<12?' ص':' م')+(h>=24?' 🌙':'')};
+const dk=d=>d.toLocaleDateString('en-CA'),fmt=h=>{const x=h%24;return (x%12||12)+(x<12?' ص':' م')+(h>=24?' 🌙':'')},fmtM=m=>{const h=Math.floor(m/60),x=h%24,mm=String(m%60).padStart(2,'0');return (x%12||12)+':'+mm+(x<12?' ص':' م')+(h>=24?' 🌙':'')},dur=m=>{const h=Math.floor(m/60),r=m%60;return (h?h+' ساعة':'')+(h&&r?' و ':'')+(r?r+' دقيقة':(!h?'0 دقيقة':''))};
 const fd=d=>d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',day:'numeric',month:'long'});
 const hp=(id,h,p)=>`<div class=row><select id=${id}h>${[...Array(12)].map((_,i)=>`<option ${i+1==h?'selected':''}>${i+1}</option>`).join('')}</select><select id=${id}p><option ${p=='ص'?'selected':''}>ص</option><option ${p=='م'?'selected':''}>م</option></select></div>`;
 const PAL=['#294B39','#4F7A5E','#86A38F','#6E7F4C','#A89B6B','#5E7A74'],OLD=['#3d7a5a','#c08a2e','#b5533c','#4a6fa5','#7a5c8e','#8a8f3c'];
@@ -58,7 +61,7 @@ async function kd(p,salt){const m=await crypto.subtle.importKey('raw',te.encode(
 const ref=(...p)=>doc(db,'users',U.uid,...p);
 let cache={};
 const applyRec=(d,x)=>{const k=dk(d),g=d.getDay();x.ra=x.ra||[];(S.rec||[]).forEach(r=>{if(!x.ra.includes(r.id)&&r.d.includes(g)&&r.c<=k){x.ra.push(r.id);x.tasks.push({n:r.n,x:0,r:r.id})}});return x};
-const loadDay=d=>{const k=dk(d);return cache[k]=cache[k]||(async()=>{const s=await getDoc(ref('days',k));return applyRec(d,s.exists()?await D(s.data().d):{tasks:[],blocks:[],learned:'',worked:''})})()};
+const loadDay=d=>{const k=dk(d);return cache[k]=cache[k]||(async()=>{const s=await getDoc(ref('days',k));const x=s.exists()?await D(s.data().d):{tasks:[],blocks:[],learned:'',worked:''};x.blocks=(x.blocks||[]).map(b=>{if(!b.u){b.f*=60;b.t*=60;b.u=1}return b});return applyRec(d,x)})()};
 const saveDay=async(d,x)=>{cache[dk(d)]=Promise.resolve(x);return setDoc(ref('days',dk(d)),{d:await E(x)})};
 const saveS=async()=>setDoc(ref('meta','s'),{s:SALT,c:await E(S)});
 const sv=()=>saveDay(date,dd);
@@ -101,10 +104,10 @@ async function unlock(){
 }
 async function go(){EI=-1;pd=new Date(date);pd.setDate(pd.getDate()-1);[dd,pv]=await Promise.all([loadDay(date),loadDay(pd)]);render()}
 function ask(x,f,t,c,ok){
- const d=document.createElement('dialog'),o=(v)=>{let s='';for(let i=W;i<=Z;i++)s+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return s},q=s=>d.querySelector(s);
- d.innerHTML=`<label>الوصف<input id=ax value="${esc(x)}"></label><div class=row><label>من<select id=af>${o(f)}</select></label><label>إلى<select id=at>${o(t)}</select></label></div><label>التصنيف<select id=ac>${S.cats.map((k,i)=>`<option value=${i} ${i==c?'selected':''}>${k.e||''} ${esc(k.n)}</option>`).join('')}</select></label><div class=row><button id=ok>حفظ</button><button id=no>إلغاء</button></div>`;
+ const d=document.createElement('dialog'),q=s=>d.querySelector(s),hours=v=>{let s='';for(let i=W;i<=Z;i++)s+=`<option value=${i} ${i==Math.floor(v/60)?'selected':''}>${fmt(i)}</option>`;return s},mins=v=>[...Array(60)].map((_,i)=>`<option value=${i} ${i==v%60?'selected':''}>${String(i).padStart(2,'0')}</option>`).join('');
+ d.innerHTML=`<label>الوصف<input id=ax value="${esc(x)}"></label><div class=row><label>من<div class=row><select id=afh>${hours(f)}</select><select id=afm>${mins(f)}</select></div></label><label>إلى<div class=row><select id=ath>${hours(t)}</select><select id=atm>${mins(t)}</select></div></label></div><label>التصنيف<select id=ac>${S.cats.map((k,i)=>`<option value=${i} ${i==c?'selected':''}>${k.e||''} ${esc(k.n)}</option>`).join('')}</select></label><div class=row><button id=ok>حفظ</button><button id=no>إلغاء</button></div>`;
  document.body.append(d);d.showModal();q('#no').onclick=()=>d.remove();
- q('#ok').onclick=()=>{const f=+q('#af').value,t=+q('#at').value;if(t<=f)return alert('وقت النهاية لازم يكون بعد البداية');ok({x:q('#ax').value,f,t,c:+q('#ac').value});d.remove()}
+ q('#ok').onclick=()=>{const f=+q('#afh').value*60 + +q('#afm').value,t=+q('#ath').value*60 + +q('#atm').value;if(t<=f)return alert('وقت النهاية لازم يكون بعد البداية');if(dd.blocks.some(b=>f<b.t&&t>b.f))return alert('هذه الفترة تتداخل مع مهمة مسجلة بالفعل');ok({x:q('#ax').value,f,t,c:+q('#ac').value,u:1});d.remove()}
 }
 function render(){
  W=dd.w??S.w;Z=dd.s??S.s;const hs=[];for(let h=W;h<Z;h++)hs.push(h);const op=(a,b,v)=>{let o='';for(let i=a;i<=b;i++)o+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return o};const un=pv.tasks.filter(t=>!t.x&&!t.m&&!t.r);
@@ -115,7 +118,7 @@ function render(){
  <h2>مهام اليوم</h2>${dd.tasks.map((t,i)=>`<div class="t ${t.x?'d':''}" data-row=${i}><span data-h=${i} title="اسحب لإعادة الترتيب" style="cursor:grab;touch-action:none;user-select:none;color:var(--mu);padding:0 2px">⋮⋮</span><input type=checkbox style="width:auto" data-ck=${i} ${t.x?'checked':''}>${EI===i?`<input class=ei value="${esc(t.n)}" style="flex:1">`:`<span style="flex:1">${t.r?'🔁 ':''}${esc(t.n)}</span>`}<button data-et=${i} title="تعديل">✏️</button><button data-dt=${i} title="حذف">🗑</button></div>`).join('')}
  <div class=row style="flex-wrap:nowrap"><input id=nt placeholder="+ مهمة جديدة" style="flex:1"><button id=na style="background:var(--tx);color:var(--bg);border-color:var(--tx);padding:6px 18px">إضافة</button></div>
  <div class=row style="margin-top:8px"><button id=rc>🔁 المهام المتكررة</button></div>
- <h2>جدول الساعات</h2>${hs.map(h=>{const i=dd.blocks.findIndex(b=>b.f<=h&&h<b.t),b=dd.blocks[i];return`<div class=h><b>${fmt(h)}</b>${b?`<div class=f style="background:${cc(b)};color:${ink(cc(b))}" data-eb=${i}>${S.cats[b.c]?.e||''} ${esc(b.x)}</div>`:`<div data-add=${h}>+</div>`}</div>`}).join('')}
+ <h2>جدول الساعات</h2><div class=schedule>${hs.map(h=>`<div class=h><b>${fmt(h)}</b><div data-add=${h}>+</div></div>`).join('')}${dd.blocks.map((b,i)=>{const top=(b.f-W*60)/60*48,height=(b.t-b.f)/60*48;return `<div class=time-block data-eb=${i} title="${fmtM(b.f)} – ${fmtM(b.t)}" style="top:${top}px;height:${Math.max(height,22)}px;background:${cc(b)};color:${ink(cc(b))}">${S.cats[b.c]?.e||''} ${esc(b.x)}<small>${fmtM(b.f)} – ${fmtM(b.t)}</small></div>`}).join('')}</div>
  <h2>التصنيفات</h2>${S.cats.map((k,i)=>`<div class=row data-cat=${i} style="margin-bottom:6px"><input value="${esc(k.e||'')}" maxlength=8 style="width:56px;text-align:center"><input type=color value="${k.c}" style="width:44px;height:34px;padding:2px"><input value="${esc(k.n)}" style="flex:1"></div>`).join('')}<div class=row><button id=ac>+ تصنيف</button></div>
  <h2>وش تعلمت اليوم</h2><textarea id=ln placeholder="اكتب /عنوان أو /قائمة أو /مهمة ثم مسافة"></textarea>
  <h2>وش اشتغلت اليوم</h2><textarea id=wr></textarea>`;
@@ -123,9 +126,9 @@ function render(){
  const themeBtn=$('#themeToggle');if(themeBtn)themeBtn.onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
  $('#pb').onclick=()=>go2(-1);$('#nb').onclick=()=>go2(1);$('#tb').onclick=()=>{date=new Date();go()};$('#wk').onclick=()=>report(date);$('#mb').onclick=()=>monthView(date);$('#so').onclick=()=>signOut(auth);
  const addT=()=>{const v=$('#nt').value.trim();if(v){dd.tasks.push({n:v,x:0});sv();render();$('#nt').focus()}};$('#na').onclick=addT;$('#nt').onkeydown=e=>{if(e.key=='Enter')addT()};
- all('[data-ck]').forEach(el=>el.onchange=()=>{const i=+el.dataset.ck,t=dd.tasks[i];t.x=el.checked?1:0;sv();render();if(t.x)ask(t.n,W,W+1,0,b=>{dd.blocks.push({...b,k:i});sv();render()})});
+ all('[data-ck]').forEach(el=>el.onchange=()=>{const i=+el.dataset.ck,t=dd.tasks[i];t.x=el.checked?1:0;sv();render();if(t.x)ask(t.n,W*60,(W+1)*60,0,b=>{dd.blocks.push({...b,k:i});sv();render()})});
  all('[data-mv]').forEach(el=>el.onclick=()=>{const t=pv.tasks[+el.dataset.mv];dd.tasks.push({n:t.n,x:0});t.m=1;saveDay(pd,pv);sv();render()});
- all('[data-add]').forEach(el=>el.onclick=()=>{const h=+el.dataset.add;ask('',h,h+1,0,b=>{dd.blocks.push(b);sv();render()})});
+ all('[data-add]').forEach(el=>el.onclick=()=>{const h=+el.dataset.add;ask('',h*60,(h+1)*60,0,b=>{dd.blocks.push(b);sv();render()})});
  all('[data-eb]').forEach(el=>el.onclick=()=>{if(confirm('حذف هذه الفترة؟')){dd.blocks.splice(+el.dataset.eb,1);sv();render()}});
  $('#rc').onclick=recDlg;
  all('[data-et]').forEach(el=>el.onclick=()=>{EI=+el.dataset.et;render()});
@@ -182,8 +185,8 @@ async function report(from){
  A.innerHTML=`<div class="row bar"><button id=bk>رجوع لليوم</button><div class=row><button id=wp>الأسبوع السابق</button><button id=wn>الأسبوع التالي</button><button id=mn>📅 الشهر</button></div></div>
  <h1>تقرير الأسبوع</h1><p>${shortD(d0)} – ${shortD(addD(d0,6))} · إنجاز المهام: <b>${p===null?'لا توجد مهام':p+'%'}</b></p>${bar(p)}
  <div style="${GR}">${ds.map(({d,x})=>{const q=pct(x.tasks);return`<div data-d="${dk(d)}" style="${BX};${dk(d)==today?'outline:2px solid var(--tx)':''}"><div style="color:var(--mu);font-size:13px">${d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long'})} ${d.getDate()}</div><div style="font-size:26px;font-weight:600">${q===null?'—':q+'%'}</div>${bar(q)}<div style="font-size:12px;color:var(--mu)">${x.tasks.filter(t=>t.x).length} من ${x.tasks.length} مهمة</div><div style="margin-top:8px">📚 تعلّم ${yn(x.learned)}<br>💼 عمل ${yn(x.worked)}</div></div>`}).join('')}</div>
- <h2>ساعات الأسبوع</h2><p>سجّلت ${tot} من ${all} ساعة، وغير المسجّل ${all-tot} ساعة.</p>${S.cats.map((k,i)=>`<div><span class=c style="background:${k.c}"></span>${k.e||''} ${esc(k.n)}: ${sum[i]||0} ساعة</div>`).join('')}
- <h2>الأنشطة</h2>${ds.map(({d,x})=>x.blocks.length?`<p><b>${fd(d)}</b><br>${x.blocks.map(b=>`${fmt(b.f)} – ${fmt(b.t)}: ${S.cats[b.c]?.e||''} ${esc(b.x)}`).join('<br>')}</p>`:'').join('')||'<p>ما فيه أنشطة مسجّلة بعد.</p>'}`;
+ <h2>ساعات الأسبوع</h2><p>سجّلت ${dur(tot)} من ${dur(all*60)}، وغير المسجّل ${dur(Math.max(0,all*60-tot))}.</p>${S.cats.map((k,i)=>`<div><span class=c style="background:${k.c}"></span>${k.e||''} ${esc(k.n)}: ${dur(sum[i]||0)}</div>`).join('')}
+ <h2>الأنشطة</h2>${ds.map(({d,x})=>x.blocks.length?`<p><b>${fd(d)}</b><br>${x.blocks.map(b=>`${fmtM(b.f)} – ${fmtM(b.t)}: ${S.cats[b.c]?.e||''} ${esc(b.x)}`).join('<br>')}</p>`:'').join('')||'<p>ما فيه أنشطة مسجّلة بعد.</p>'}`;
  $('#bk').onclick=render;$('#wp').onclick=()=>report(addD(d0,-7));$('#wn').onclick=()=>report(addD(d0,7));$('#mn').onclick=()=>monthView(addD(d0,3));
  A.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{date=pd0(el.dataset.d);go()});
 }

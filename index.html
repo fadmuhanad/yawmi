@@ -223,15 +223,32 @@ async function report(from){
  A.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{date=pd0(el.dataset.d);go()});
 }
 async function monthView(r0){
- A.innerHTML='<p class=box>جاري التحميل…</p>';
- const m0=new Date(r0.getFullYear(),r0.getMonth(),1),m1=new Date(r0.getFullYear(),r0.getMonth()+1,0),ws=[];
- for(let w=wkStart(m0);w<=m1;w=addD(w,7))ws.push(w);
- const data=await Promise.all(ws.map(w=>Promise.all([...Array(7)].map((_,i)=>ld(addD(w,i)))))),cur=dk(wkStart(new Date()));
- A.innerHTML=`<div class="row bar"><button id=bk>رجوع لليوم</button><div class=row><button id=mp>الشهر السابق</button><button id=mx>الشهر التالي</button></div></div>
- <h1>${m0.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long',year:'numeric'})}</h1>
- <div style="${GR.replace('150px','200px')}">${ws.map((w,i)=>{const ts=data[i].flatMap(({x})=>x.tasks),p=pct(ts);return`<div data-w="${dk(w)}" style="${BX};${dk(w)==cur?'outline:2px solid var(--tx)':''}"><div style="color:var(--mu);font-size:13px">الأسبوع ${i+1} · ${shortD(w)} – ${shortD(addD(w,6))}${dk(w)==cur?' · 📍 أنت هنا':''}</div><div style="font-size:26px;font-weight:600">${p===null?'—':p+'%'}</div>${bar(p)}<div style="font-size:12px;color:var(--mu)">${ts.filter(t=>t.x).length} من ${ts.length} مهمة</div></div>`}).join('')}</div>`;
+ A.innerHTML='<p class=box>جاري تحميل التقرير الشهري…</p>';
+ const m0=new Date(r0.getFullYear(),r0.getMonth(),1),m1=new Date(r0.getFullYear(),r0.getMonth()+1,0);
+ const days=[...Array(m1.getDate())].map((_,i)=>addD(m0,i)),ds=await Promise.all(days.map(ld)),groups=[];
+ ds.forEach(v=>{const key=dk(wkStart(v.d));let g=groups.find(x=>x.key===key);if(!g){g={key,days:[]};groups.push(g)}g.days.push(v)});
+ const allTasks=ds.flatMap(({x})=>x.tasks),done=allTasks.filter(t=>t.x).length,open=allTasks.filter(t=>!t.x),completion=allTasks.length?Math.round(done/allTasks.length*100):null;
+ const sum={},daily=ds.map(({d,x})=>({d,mins:x.blocks.reduce((a,b)=>a+Math.max(0,b.t-b.f),0)}));let total=0;
+ ds.forEach(({x})=>x.blocks.forEach(b=>{const v=Math.max(0,b.t-b.f);sum[b.c]=(sum[b.c]||0)+v;total+=v}));
+ const activeDays=daily.filter(x=>x.mins>0).length,maxDaily=Math.max(1,...daily.map(x=>x.mins));
+ const stat=(v,l)=>'<div style="border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--hv)"><div style="font-size:25px;font-weight:700;line-height:1.4">'+v+'</div><div style="font-size:12px;color:var(--mu)">'+l+'</div></div>';
+ const weekCards=groups.map((g,i)=>{
+  const ts=g.days.flatMap(v=>v.x.tasks),n=ts.length,c=ts.filter(t=>t.x).length,p=n?Math.round(c/n*100):null;
+  const mins=g.days.reduce((a,v)=>a+v.x.blocks.reduce((n,b)=>n+Math.max(0,b.t-b.f),0),0),active=g.days.filter(v=>v.x.blocks.length).length;
+  return '<div style="border:1px solid var(--bd);border-radius:12px;padding:12px;background:var(--hv)"><b>الأسبوع '+(i+1)+'</b><div style="font-size:12px;color:var(--mu);margin:3px 0 10px">'+shortD(g.days[0].d)+' – '+shortD(g.days[g.days.length-1].d)+'</div><div style="font-size:23px;font-weight:700">'+(p===null?'—':p+'%')+'</div>'+bar(p)+'<div style="font-size:12px;color:var(--mu)">'+c+' من '+n+' مهمة · '+dur(mins)+' نشاط · '+active+' أيام نشطة</div></div>';
+ }).join('');
+ A.innerHTML='<div class="row bar"><button id=bk>رجوع لليوم</button><div class=row><button id=mp>الشهر السابق</button><button id=mx>الشهر التالي</button></div></div>'+
+ '<h1>تقرير '+m0.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long',year:'numeric'})+'</h1>'+
+ '<h2>ملخص الشهر</h2><div style="'+GR+'">'+stat(allTasks.length,'إجمالي المهام')+stat(done,'المهام المكتملة')+stat(dur(total),'ساعات النشاط')+stat(activeDays+'/'+days.length,'أيام النشاط')+'</div>'+
+ '<h2>معدل إنجاز المهام</h2><div class=row style="justify-content:space-between"><b>'+(completion===null?'لا توجد مهام مسجلة':completion+'%')+'</b><span style="color:var(--mu);font-size:13px">'+done+' مكتملة من '+allTasks.length+'</span></div>'+bar(completion)+
+ '<h2>مقارنة الأسابيع</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px">'+weekCards+'</div>'+
+ '<h2>توزيع الوقت حسب التصنيفات</h2>'+
+ (S.cats.map((k,i)=>{const v=sum[i]||0;return '<div style="margin:10px 0"><div class=row style="justify-content:space-between"><span><span class=c style="background:'+k.c+'"></span>'+(k.e||'')+' '+esc(k.n)+'</span><b>'+dur(v)+'</b></div><div style="height:7px;border-radius:8px;background:var(--bd);overflow:hidden"><div style="height:100%;width:'+(total?Math.round(v/total*100):0)+'%;background:'+k.c+';border-radius:8px"></div></div></div>'}).join('')||'<p style="color:var(--mu)">لا توجد تصنيفات.</p>')+
+ '<h2>النشاط اليومي</h2><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:12px 0">'+
+ daily.map(({d,mins})=>'<div title="'+fd(d)+' · '+dur(mins)+'" style="text-align:center;min-width:0"><div style="height:76px;display:flex;align-items:end;justify-content:center"><div style="width:65%;height:'+(mins?Math.max(4,mins/maxDaily*76):3)+'px;background:var(--tx);border-radius:5px 5px 0 0;opacity:'+(mins?1:.2)+'"></div></div><div style="font-size:10px;color:var(--mu);margin-top:5px">'+d.getDate()+'</div></div>').join('')+
+ '</div><h2>المهام غير المكتملة ('+open.length+')</h2>'+
+ (open.length?open.map(t=>'<div class=t><span style="flex:1">'+esc(t.n)+'</span>'+(t.r?'<small style="color:var(--mu)">متكررة</small>':'')+'</div>').join(''):'<p style="color:var(--mu)">لا توجد مهام غير مكتملة.</p>');
  $('#bk').onclick=render;$('#mp').onclick=()=>monthView(new Date(m0.getFullYear(),m0.getMonth()-1,1));$('#mx').onclick=()=>monthView(new Date(m0.getFullYear(),m0.getMonth()+1,1));
- A.querySelectorAll('[data-w]').forEach(el=>el.onclick=()=>report(pd0(el.dataset.w)));
 }
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

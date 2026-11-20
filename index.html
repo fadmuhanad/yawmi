@@ -128,7 +128,7 @@ function render(){
  <h2>المهام القادمة</h2>${(S.future||[]).filter(t=>!t.done).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||'')).map(t=>{const n=daysLeft(t.date),label=n<0?'متأخرة '+Math.abs(n)+' يوم':n===0?'موعدها اليوم':n===1?'متبقي يوم واحد':'متبقي '+n+' أيام';return `<div class=t data-future="${t.id}" style="cursor:pointer"><span style="flex:1"><b>${esc(t.n)}</b><br><small style="color:var(--mu)">${dateLabel(t.date)}${t.time?' · '+esc(t.time):''}</small></span><b>${label}</b></div>`}).join('')||'<p style="color:var(--mu)">لا توجد مهام قادمة.</p>'}
  <div class=row style="flex-wrap:nowrap"><button id=addFuture style="background:var(--tx);color:var(--bg);border-color:var(--tx);padding:6px 18px">+ إضافة مهمة قادمة</button></div>
  <h2>التصنيفات</h2>${S.cats.map((k,i)=>`<div class=row data-cat=${i} style="margin-bottom:6px"><input value="${esc(k.e||'')}" maxlength=8 style="width:56px;text-align:center"><input type=color value="${k.c}" style="width:44px;height:34px;padding:2px"><input value="${esc(k.n)}" style="flex:1"></div>`).join('')}<div class=row><button id=ac>+ تصنيف</button></div>
- <h2>وش اشتغلت اليوم</h2><textarea id=wr></textarea>`;
+ `;
  const go2=n=>{date.setDate(date.getDate()+n);go()},all=s=>A.querySelectorAll(s);
  $('#addFuture').onclick=()=>futureDlg();all('[data-future]').forEach(el=>el.onclick=()=>{const t=(S.future||[]).find(x=>x.id===el.dataset.future);if(t)showFuture(t)});all('[data-task-detail]').forEach(el=>el.onclick=()=>{const t=dd.tasks[+el.dataset.taskDetail];if(t)taskDetail(t,(n,d)=>{t.n=n;t.d=d;sv();render()})});
  const themeBtn=$('#themeToggle');if(themeBtn)themeBtn.onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
@@ -152,7 +152,7 @@ function render(){
  all('[data-cat]').forEach(r=>{const i=+r.dataset.cat,[e,c,n]=r.querySelectorAll('input');e.onchange=()=>{S.cats[i].e=e.value.trim();saveS();render()};c.onchange=()=>{S.cats[i].c=c.value;saveS();render()};n.onchange=()=>{S.cats[i].n=n.value.trim()||S.cats[i].n;saveS();render()}});
  $('#ac').onclick=()=>{const n=prompt('اسم التصنيف');if(n){const e=prompt('إيموجي التصنيف (اختياري)','🔖');S.cats.push({n,c:PAL[S.cats.length%PAL.length],e:(e||'').trim()});saveS();render()}};
  const M={'عنوان':'# ','قائمة':'• ','مهمة':'☐ '};let tm;
- [['#wr','worked']].forEach(([s,k])=>{const e=$(s);e.value=dd[k];e.oninput=()=>{const v=e.value.replace(/(^|\n)\/(عنوان|قائمة|مهمة) /g,(m,a,w)=>a+M[w]);if(v!=e.value)e.value=v;dd[k]=v;clearTimeout(tm);tm=setTimeout(sv,600)}});
+ [].forEach(([s,k])=>{const e=$(s);e.value=dd[k];e.oninput=()=>{const v=e.value.replace(/(^|\n)\/(عنوان|قائمة|مهمة) /g,(m,a,w)=>a+M[w]);if(v!=e.value)e.value=v;dd[k]=v;clearTimeout(tm);tm=setTimeout(sv,600)}});
 }
 const pct=ts=>ts.length?Math.round(100*ts.filter(t=>t.x).length/ts.length):null;
 const bar=p=>`<div style="height:6px;border-radius:3px;background:var(--bd);margin:6px 0"><div style="height:100%;width:${p||0}%;border-radius:3px;background:var(--tx)"></div></div>`;

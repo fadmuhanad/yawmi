@@ -197,9 +197,6 @@ async function report(from){
  });
  const maxDaily=Math.max(1,...daily.map(v=>v.mins));
  const maxCat=Math.max(1,...Object.values(sum));
- const weekKey=dk(d0);
- S.weekReviews=S.weekReviews||{};
- const review=S.weekReviews[weekKey]||{achievement:'',problem:'',improve:''};
  const today=dk(new Date());
  const stat=(v,l)=>`<div style="border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--hv)"><div style="font-size:25px;font-weight:700;line-height:1.4">${v}</div><div style="font-size:12px;color:var(--mu)">${l}</div></div>`;
  A.innerHTML=`<div class="row bar"><button id=bk>رجوع لليوم</button><div class=row><button id=wp>الأسبوع السابق</button><button id=wn>الأسبوع التالي</button><button id=mn>📅 الشهر</button></div></div>
@@ -221,16 +218,9 @@ async function report(from){
  </div>
  <h2>المهام غير المكتملة (${open.length})</h2>
  ${open.length?open.map(t=>`<div class=t><span style="flex:1">${esc(t.n)}</span>${t.r?'<small style="color:var(--mu)">متكررة</small>':''}</div>`).join(''):'<p style="color:var(--mu)">لا توجد مهام غير مكتملة.</p>'}
- <h2>مراجعة الأسبوع</h2>
- <p style="color:var(--mu);font-size:13px">اكتب ملاحظاتك للرجوع إليها لاحقاً.</p>
- <label>أهم إنجاز<textarea id=wrAchievement rows=2 placeholder="ما أهم إنجاز حققته؟">${esc(review.achievement||'')}</textarea></label>
- <label>أكبر تقصير أو مشكلة<textarea id=wrProblem rows=2 placeholder="ما الذي لم يسر كما خططت؟">${esc(review.problem||'')}</textarea></label>
- <label>ما الذي تريد تحسينه الأسبوع القادم؟<textarea id=wrImprove rows=2 placeholder="ما التغيير الذي ستبدأ به؟">${esc(review.improve||'')}</textarea></label>
- <p id=wrSaved style="font-size:12px;color:var(--mu)">تُحفظ المراجعة تلقائياً عند مغادرة الحقل.</p>`;
+`;
  $('#bk').onclick=render;$('#wp').onclick=()=>report(addD(d0,-7));$('#wn').onclick=()=>report(addD(d0,7));$('#mn').onclick=()=>monthView(addD(d0,3));
  A.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{date=pd0(el.dataset.d);go()});
- const saveReview=async()=>{S.weekReviews=S.weekReviews||{};S.weekReviews[weekKey]={achievement:$('#wrAchievement').value,problem:$('#wrProblem').value,improve:$('#wrImprove').value};await saveS();const note=$('#wrSaved');if(note)note.textContent='تم حفظ المراجعة';};
- ['#wrAchievement','#wrProblem','#wrImprove'].forEach(id=>$(id).onchange=saveReview);
 }
 async function monthView(r0){
  A.innerHTML='<p class=box>جاري التحميل…</p>';

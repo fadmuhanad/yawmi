@@ -187,16 +187,50 @@ function recDlg(){
 async function report(from){
  A.innerHTML='<p class=box>جاري التحميل…</p>';
  const d0=wkStart(from),ds=await Promise.all([...Array(7)].map((_,i)=>ld(addD(d0,i))));
- const p=pct(ds.flatMap(({x})=>x.tasks)),sum={};let tot=0;
- ds.forEach(({x})=>x.blocks.forEach(b=>{sum[b.c]=(sum[b.c]||0)+b.t-b.f;tot+=b.t-b.f}));
- const all=ds.reduce((a,{x})=>a+((x.s??S.s)-(x.w??S.w)),0),today=dk(new Date()),yn=v=>v&&v.trim()?'✅':'❌';
+ const tasks=ds.flatMap(({x})=>x.tasks),done=tasks.filter(t=>t.x).length,open=tasks.filter(t=>!t.x);
+ const p=tasks.length?Math.round(done/tasks.length*100):null,sum={},daily=[],activeDays=ds.filter(({x})=>x.blocks.length).length;
+ let tot=0;
+ ds.forEach(({d,x})=>{
+  let mins=0;
+  x.blocks.forEach(b=>{const v=Math.max(0,b.t-b.f);sum[b.c]=(sum[b.c]||0)+v;tot+=v;mins+=v});
+  daily.push({d,x,mins});
+ });
+ const maxDaily=Math.max(1,...daily.map(v=>v.mins));
+ const maxCat=Math.max(1,...Object.values(sum));
+ const weekKey=dk(d0);
+ S.weekReviews=S.weekReviews||{};
+ const review=S.weekReviews[weekKey]||{achievement:'',problem:'',improve:''};
+ const today=dk(new Date());
+ const stat=(v,l)=>`<div style="border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--hv)"><div style="font-size:25px;font-weight:700;line-height:1.4">${v}</div><div style="font-size:12px;color:var(--mu)">${l}</div></div>`;
  A.innerHTML=`<div class="row bar"><button id=bk>رجوع لليوم</button><div class=row><button id=wp>الأسبوع السابق</button><button id=wn>الأسبوع التالي</button><button id=mn>📅 الشهر</button></div></div>
- <h1>تقرير الأسبوع</h1><p>${shortD(d0)} – ${shortD(addD(d0,6))} · إنجاز المهام: <b>${p===null?'لا توجد مهام':p+'%'}</b></p>${bar(p)}
- <div style="${GR}">${ds.map(({d,x})=>{const q=pct(x.tasks);return`<div data-d="${dk(d)}" style="${BX};${dk(d)==today?'outline:2px solid var(--tx)':''}"><div style="color:var(--mu);font-size:13px">${d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long'})} ${d.getDate()}</div><div style="font-size:26px;font-weight:600">${q===null?'—':q+'%'}</div>${bar(q)}<div style="font-size:12px;color:var(--mu)">${x.tasks.filter(t=>t.x).length} من ${x.tasks.length} مهمة</div><div style="margin-top:8px">📚 تعلّم ${yn(x.learned)}<br>💼 عمل ${yn(x.worked)}</div></div>`}).join('')}</div>
- <h2>ساعات الأسبوع</h2><p>سجّلت ${dur(tot)} من ${dur(all*60)}، وغير المسجّل ${dur(Math.max(0,all*60-tot))}.</p>${S.cats.map((k,i)=>`<div><span class=c style="background:${k.c}"></span>${k.e||''} ${esc(k.n)}: ${dur(sum[i]||0)}</div>`).join('')}
- <h2>الأنشطة</h2>${ds.map(({d,x})=>x.blocks.length?`<p><b>${fd(d)}</b><br>${x.blocks.map(b=>`${fmtM(b.f)} – ${fmtM(b.t)}: ${S.cats[b.c]?.e||''} ${esc(b.x)}`).join('<br>')}</p>`:'').join('')||'<p>ما فيه أنشطة مسجّلة بعد.</p>'}`;
+ <h1>تقرير الأسبوع</h1><p style="color:var(--mu)">${shortD(d0)} – ${shortD(addD(d0,6))}</p>
+ <div style="${GR}">
+  ${stat(tasks.length,'إجمالي المهام')}
+  ${stat(done,'مهام مكتملة')}
+  ${stat(dur(tot),'ساعات النشاط')}
+  ${stat(activeDays+'/7','أيام النشاط')}
+ </div>
+ <h2>إنجاز المهام</h2>
+ <div class=row style="justify-content:space-between"><b>${p===null?'لا توجد مهام مسجلة':p+'%'}</b><span style="color:var(--mu);font-size:13px">${done} مكتملة من ${tasks.length}</span></div>
+ ${bar(p)}
+ <h2>توزيع الوقت</h2>
+ ${S.cats.map((k,i)=>{const v=sum[i]||0;return `<div style="margin:10px 0"><div class=row style="justify-content:space-between"><span><span class=c style="background:${k.c}"></span>${k.e||''} ${esc(k.n)}</span><b>${dur(v)}</b></div><div style="height:7px;border-radius:8px;background:var(--bd);overflow:hidden"><div style="height:100%;width:${Math.round(v/maxCat*100)}%;background:${k.c};border-radius:8px"></div></div></div>`}).join('')||'<p style="color:var(--mu)">لا توجد تصنيفات.</p>'}
+ <h2>نشاطك اليومي</h2>
+ <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;align-items:end;margin:12px 0">
+ ${daily.map(({d,x,mins})=>`<div data-d="${dk(d)}" title="${fd(d)} · ${dur(mins)}" style="text-align:center;cursor:pointer;min-width:0"><div style="height:100px;display:flex;align-items:end;justify-content:center"><div style="width:65%;height:${mins?Math.max(4,mins/maxDaily*100):3}px;background:var(--tx);border-radius:5px 5px 0 0;opacity:${mins?1:.2}"></div></div><div style="font-size:11px;color:var(--mu);margin-top:6px">${['أح','إث','ثل','أر','خم','جم','سب'][d.getDay()]}</div><div style="font-size:10px;color:var(--mu)">${mins?Math.round(mins/60*10)/10+'س':'—'}</div></div>`).join('')}
+ </div>
+ <h2>المهام غير المكتملة (${open.length})</h2>
+ ${open.length?open.map(t=>`<div class=t><span style="flex:1">${esc(t.n)}</span>${t.r?'<small style="color:var(--mu)">متكررة</small>':''}</div>`).join(''):'<p style="color:var(--mu)">لا توجد مهام غير مكتملة.</p>'}
+ <h2>مراجعة الأسبوع</h2>
+ <p style="color:var(--mu);font-size:13px">اكتب ملاحظاتك للرجوع إليها لاحقاً.</p>
+ <label>أهم إنجاز<textarea id=wrAchievement rows=2 placeholder="ما أهم إنجاز حققته؟">${esc(review.achievement||'')}</textarea></label>
+ <label>أكبر تقصير أو مشكلة<textarea id=wrProblem rows=2 placeholder="ما الذي لم يسر كما خططت؟">${esc(review.problem||'')}</textarea></label>
+ <label>ما الذي تريد تحسينه الأسبوع القادم؟<textarea id=wrImprove rows=2 placeholder="ما التغيير الذي ستبدأ به؟">${esc(review.improve||'')}</textarea></label>
+ <p id=wrSaved style="font-size:12px;color:var(--mu)">تُحفظ المراجعة تلقائياً عند مغادرة الحقل.</p>`;
  $('#bk').onclick=render;$('#wp').onclick=()=>report(addD(d0,-7));$('#wn').onclick=()=>report(addD(d0,7));$('#mn').onclick=()=>monthView(addD(d0,3));
  A.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{date=pd0(el.dataset.d);go()});
+ const saveReview=async()=>{S.weekReviews=S.weekReviews||{};S.weekReviews[weekKey]={achievement:$('#wrAchievement').value,problem:$('#wrProblem').value,improve:$('#wrImprove').value};await saveS();const note=$('#wrSaved');if(note)note.textContent='تم حفظ المراجعة';};
+ ['#wrAchievement','#wrProblem','#wrImprove'].forEach(id=>$(id).onchange=saveReview);
 }
 async function monthView(r0){
  A.innerHTML='<p class=box>جاري التحميل…</p>';

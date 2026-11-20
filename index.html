@@ -60,7 +60,7 @@ async function D(s){const[i,c]=s.split('.');return JSON.parse(td.decode(await cr
 async function kd(p,salt){const m=await crypto.subtle.importKey('raw',te.encode(p),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 const ref=(...p)=>doc(db,'users',U.uid,...p);
 let cache={};
-const applyRec=(d,x)=>{const k=dk(d),g=d.getDay();x.ra=x.ra||[];(S.rec||[]).forEach(r=>{if(!x.ra.includes(r.id)&&r.d.includes(g)&&r.c<=k){x.ra.push(r.id);x.tasks.push({n:r.n,x:0,r:r.id})}});return x};
+const applyRec=(d,x)=>{const k=dk(d),g=d.getDay();x.ra=x.ra||[];(S.rec||[]).forEach(r=>{if(!x.ra.includes(r.id)&&r.d.includes(g)&&r.c<=k){x.ra.push(r.id);x.tasks.push({n:r.n,d:r.desc||'',x:0,r:r.id})}});return x};
 const loadDay=d=>{const k=dk(d);return cache[k]=cache[k]||(async()=>{const s=await getDoc(ref('days',k));const x=s.exists()?await D(s.data().d):{tasks:[],blocks:[],learned:'',worked:''};x.blocks=(x.blocks||[]).map(b=>{if(!b.u){b.f*=60;b.t*=60;b.u=1}return b});return applyRec(d,x)})()};
 const saveDay=async(d,x)=>{cache[dk(d)]=Promise.resolve(x);return setDoc(ref('days',dk(d)),{d:await E(x)})};
 const saveS=async()=>setDoc(ref('meta','s'),{s:SALT,c:await E(S)});
@@ -135,7 +135,7 @@ function render(){
  $('#pb').onclick=()=>go2(-1);$('#nb').onclick=()=>go2(1);$('#tb').onclick=()=>{date=new Date();go()};$('#wk').onclick=()=>report(date);$('#mb').onclick=()=>monthView(date);$('#so').onclick=()=>signOut(auth);
  const addT=()=>{const v=$('#nt').value.trim();if(v){dd.tasks.push({n:v,x:0});sv();render();$('#nt').focus()}};$('#na').onclick=addT;$('#nt').onkeydown=e=>{if(e.key=='Enter')addT()};
  all('[data-ck]').forEach(el=>el.onchange=()=>{const i=+el.dataset.ck,t=dd.tasks[i];t.x=el.checked?1:0;sv();render();if(t.x)ask(t.n,W*60,(W+1)*60,0,b=>{dd.blocks.push({...b,k:i});sv();render()})});
- all('[data-mv]').forEach(el=>el.onclick=()=>{const t=pv.tasks[+el.dataset.mv];dd.tasks.push({n:t.n,x:0});t.m=1;saveDay(pd,pv);sv();render()});
+ all('[data-mv]').forEach(el=>el.onclick=()=>{const t=pv.tasks[+el.dataset.mv];dd.tasks.push({n:t.n,d:t.d||'',x:0});t.m=1;saveDay(pd,pv);sv();render()});
  all('[data-add]').forEach(el=>el.onclick=()=>{const h=+el.dataset.add;ask('',h*60,(h+1)*60,0,b=>{dd.blocks.push(b);sv();render()})});
  all('[data-eb]').forEach(el=>el.onclick=()=>{if(confirm('حذف هذه الفترة؟')){dd.blocks.splice(+el.dataset.eb,1);sv();render()}});
  $('#rc').onclick=recDlg;
@@ -164,23 +164,23 @@ const BX='border:1px solid var(--bd);border-radius:10px;padding:12px;cursor:poin
 const pd0=s=>new Date(s+'T00:00:00');
 function recDlg(){
  S.rec=S.rec||[];
- const dlg=document.createElement('dialog'),DN=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];let eid=null,sel=[],nm='';
+ const dlg=document.createElement('dialog'),DN=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];let eid=null,sel=[],nm='',description='';
  const refresh=async()=>{await saveS();await Promise.all(Object.entries(cache).map(([k,p])=>p.then(x=>applyRec(pd0(k),x))));sv();render()};
  const draw=()=>{
   dlg.innerHTML=`<h2 style="margin:0 0 8px">المهام المتكررة</h2>${S.rec.map((r,i)=>`<div class=t><span style="flex:1">${esc(r.n)}<br><small style="color:var(--mu)">${r.d.map(x=>DN[x]).join('، ')}</small></span><button data-e=${i}>✏️</button><button data-x=${i}>🗑</button></div>`).join('')||'<p style="color:var(--mu)">ما فيه مهام متكررة بعد.</p>'}
-  <h2>${eid===null?'مهمة متكررة جديدة':'تعديل المهمة'}</h2><input id=rn placeholder="اكتب المهمة" value="${esc(nm)}">
+  <h2>${eid===null?'مهمة متكررة جديدة':'تعديل المهمة'}</h2><input id=rn placeholder="اكتب المهمة" value="${esc(nm)}"><label>الوصف<textarea id=rd rows=3 placeholder="وصف المهمة">${esc(description)}</textarea></label>
   <div class=row style="margin:10px 0">${DN.map((n,i)=>`<button data-d=${i} style="${sel.includes(i)?'background:var(--tx);color:var(--bg)':''}">${n}</button>`).join('')}<button id=ra>كل الأيام</button></div>
   <div class=row><button id=rs style="background:var(--tx);color:var(--bg)">${eid===null?'إضافة':'حفظ'}</button><button id=rx>إغلاق</button></div>`;
   const q=x=>dlg.querySelector(x);
-  q('#rn').oninput=e=>nm=e.target.value;
-  dlg.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{nm=q('#rn').value;const i=+b.dataset.d;sel=sel.includes(i)?sel.filter(x=>x!=i):[...sel,i];draw()});
-  q('#ra').onclick=()=>{nm=q('#rn').value;sel=[0,1,2,3,4,5,6];draw()};
-  dlg.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{const r=S.rec[+b.dataset.e];eid=r.id;nm=r.n;sel=[...r.d];draw()});
+  q('#rn').oninput=e=>nm=e.target.value;q('#rd').oninput=e=>description=e.target.value;
+  dlg.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{nm=q('#rn').value;description=q('#rd').value;const i=+b.dataset.d;sel=sel.includes(i)?sel.filter(x=>x!=i):[...sel,i];draw()});
+  q('#ra').onclick=()=>{nm=q('#rn').value;description=q('#rd').value;sel=[0,1,2,3,4,5,6];draw()};
+  dlg.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{const r=S.rec[+b.dataset.e];eid=r.id;nm=r.n;description=r.desc||'';sel=[...r.d];draw()});
   dlg.querySelectorAll('[data-x]').forEach(b=>b.onclick=async()=>{const i=+b.dataset.x;if(confirm('حذف المهمة المتكررة «'+S.rec[i].n+'»؟ المهام اللي انضافت قبل للأيام تبقى.')){S.rec.splice(i,1);eid=null;nm='';sel=[];await saveS();draw()}});
   q('#rx').onclick=()=>dlg.remove();
-  q('#rs').onclick=async()=>{const n=q('#rn').value.trim();if(!n)return alert('اكتب اسم المهمة');if(!sel.length)return alert('اختر يوماً واحداً على الأقل');
-   if(eid===null)S.rec.push({id:Date.now().toString(36),n,d:[...sel].sort(),c:dk(new Date())});else{const r=S.rec.find(r=>r.id==eid);r.n=n;r.d=[...sel].sort()}
-   eid=null;nm='';sel=[];await refresh();draw()};
+  q('#rs').onclick=async()=>{const n=q('#rn').value.trim();description=q('#rd').value.trim();if(!n)return alert('اكتب اسم المهمة');if(!sel.length)return alert('اختر يوماً واحداً على الأقل');
+   if(eid===null)S.rec.push({id:Date.now().toString(36),n,desc:description,d:[...sel].sort(),c:dk(new Date())});else{const r=S.rec.find(r=>r.id==eid);r.n=n;r.desc=description;r.d=[...sel].sort()}
+   eid=null;nm='';description='';sel=[];await refresh();draw()};
  };
  document.body.append(dlg);dlg.showModal();draw();
 }

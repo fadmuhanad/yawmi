@@ -110,11 +110,14 @@ async function unlock(){
  }
 }
 async function go(){EI=-1;pd=new Date(date);pd.setDate(pd.getDate()-1);[dd,pv]=await Promise.all([loadDay(date),loadDay(pd)]);render()}
+function maxConcurrent(blocks){const ev=[];blocks.forEach(b=>{ev.push([b.f,1],[b.t,-1])});ev.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let n=0,m=0;for(const e of ev){n+=e[1];m=Math.max(m,n)}return m}
+function unionMinutes(blocks){const a=blocks.filter(b=>b.t>b.f).map(b=>[b.f,b.t]).sort((x,y)=>x[0]-y[0]);let total=0,start=null,end=null;for(const [f,t] of a){if(start===null){start=f;end=t}else if(f<=end)end=Math.max(end,t);else{total+=end-start;start=f;end=t}}return total+(start===null?0:end-start)}
+function blockLayout(blocks){const sorted=blocks.map((b,i)=>({...b,_i:i})).sort((a,b)=>a.f-b.f||a.t-b.t),out=Array(blocks.length);let cluster=[],clusterEnd=-Infinity;const flush=()=>{if(!cluster.length)return;const ends=[],placed=[];for(const b of cluster){let lane=ends.findIndex(v=>v<=b.f);if(lane<0)lane=ends.length;ends[lane]=b.t;placed.push({...b,lane})}const count=ends.length;placed.forEach(b=>out[b._i]={lane:b.lane,count})};for(const b of sorted){if(cluster.length&&b.f>=clusterEnd){flush();cluster=[];clusterEnd=-Infinity}cluster.push(b);clusterEnd=Math.max(clusterEnd,b.t)}flush();return out}
 function ask(x,f,t,c,ok){
  const d=document.createElement('dialog'),q=s=>d.querySelector(s),hours=v=>{let s='';for(let i=W;i<=Z;i++)s+=`<option value=${i} ${i==Math.floor(v/60)?'selected':''}>${fmt(i)}</option>`;return s},mins=v=>[...Array(60)].map((_,i)=>`<option value=${i} ${i==v%60?'selected':''}>${String(i).padStart(2,'0')}</option>`).join('');
  d.innerHTML=`<label>الوصف<input id=ax value="${esc(x)}"></label><div class=row><label>من<div class=row><select id=afh>${hours(f)}</select><select id=afm>${mins(f)}</select></div></label><label>إلى<div class=row><select id=ath>${hours(t)}</select><select id=atm>${mins(t)}</select></div></label></div><label>التصنيف<select id=ac>${S.cats.map((k,i)=>`<option value=${i} ${i==c?'selected':''}>${k.e||''} ${esc(k.n)}</option>`).join('')}</select></label><div class=row><button id=ok>حفظ</button><button id=no>إلغاء</button></div>`;
  document.body.append(d);d.showModal();q('#no').onclick=()=>d.remove();
- q('#ok').onclick=()=>{const f=+q('#afh').value*60 + +q('#afm').value,t=+q('#ath').value*60 + +q('#atm').value;if(t<=f)return alert('وقت النهاية لازم يكون بعد البداية');if(dd.blocks.some(b=>f<b.t&&t>b.f))return alert('هذه الفترة تتداخل مع مهمة مسجلة بالفعل');ok({x:q('#ax').value,f,t,c:+q('#ac').value,u:1});d.remove()}
+ q('#ok').onclick=()=>{const f=+q('#afh').value*60 + +q('#afm').value,t=+q('#ath').value*60 + +q('#atm').value;if(t<=f)return alert('وقت النهاية لازم يكون بعد البداية');if(maxConcurrent([...dd.blocks,{f,t}])>3)return alert('لا يمكن تسجيل أكثر من 3 مهام في الوقت نفسه');ok({x:q('#ax').value,f,t,c:+q('#ac').value,u:1});d.remove()}
 }
 function render(){
  W=dd.w??S.w;Z=dd.s??S.s;const hs=[];for(let h=W;h<Z;h++)hs.push(h);const op=(a,b,v)=>{let o='';for(let i=a;i<=b;i++)o+=`<option value=${i} ${i==v?'selected':''}>${fmt(i)}</option>`;return o};const un=pv.tasks.filter(t=>!t.x&&!t.m&&!t.r);
@@ -125,7 +128,7 @@ function render(){
  <h2>مهام اليوم</h2>${dd.tasks.map((t,i)=>`<div class="t ${t.x?'d':''}" data-row=${i}><span data-h=${i} title="اسحب لإعادة الترتيب" style="cursor:grab;touch-action:none;user-select:none;color:var(--mu);padding:0 2px">⋮⋮</span><input type=checkbox style="width:auto" data-ck=${i} ${t.x?'checked':''}>${EI===i?`<input class=ei value="${esc(t.n)}" style="flex:1">`:`<span data-task-detail=${i} style="flex:1;cursor:pointer" title="عرض الوصف">${t.r?'🔁 ':''}${esc(t.n)}${t.d?'<small style="display:block;color:var(--mu)">يوجد وصف · اضغط للتفاصيل</small>':''}</span>`}<button data-et=${i} title="تعديل">✏️</button><button data-dt=${i} title="حذف">🗑</button></div>`).join('')}
  <div class=row style="flex-wrap:nowrap"><input id=nt placeholder="+ مهمة جديدة" style="flex:1"><button id=na style="background:var(--tx);color:var(--bg);border-color:var(--tx);padding:6px 18px">إضافة</button></div>
  <div class=row style="margin-top:8px"><button id=rc>🔁 المهام المتكررة</button></div>
- <h2>جدول الساعات</h2><div class=schedule>${hs.map(h=>`<div class=h><b>${fmt(h)}</b><div data-add=${h}>+</div></div>`).join('')}${dd.blocks.map((b,i)=>{const top=(b.f-W*60)/60*48,height=(b.t-b.f)/60*48;return `<div class=time-block data-eb=${i} title="${fmtM(b.f)} – ${fmtM(b.t)}" style="top:${top}px;height:${height}px;background:${cc(b)};color:${ink(cc(b))}">${S.cats[b.c]?.e||''} ${esc(b.x)}<small>${fmtM(b.f)} – ${fmtM(b.t)}</small></div>`}).join('')}</div>
+ <h2>جدول الساعات</h2><div class=schedule>${hs.map(h=>`<div class=h><b>${fmt(h)}</b><div data-add=${h}>+</div></div>`).join('')}${dd.blocks.map((b,i)=>{const top=(b.f-W*60)/60*48,height=(b.t-b.f)/60*48,l=blockLayout(dd.blocks)[i]||{lane:0,count:1};return `<div class=time-block data-eb=${i} title="${fmtM(b.f)} – ${fmtM(b.t)}" style="top:${top}px;height:${height}px;right:calc(76px + (100% - 76px)*${l.lane}/${l.count});width:calc((100% - 76px)/${l.count} - 2px);background:${cc(b)};color:${ink(cc(b))}">${S.cats[b.c]?.e||''} ${esc(b.x)}<small>${fmtM(b.f)} – ${fmtM(b.t)}</small></div>`}).join('')}</div>
  <h2>المهام القادمة</h2>${(S.future||[]).filter(t=>!t.done).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||'')).map(t=>{const n=daysLeft(t.date),label=n<0?'متأخرة '+Math.abs(n)+' يوم':n===0?'موعدها اليوم':n===1?'متبقي يوم واحد':'متبقي '+n+' أيام';return `<div class=t data-future="${t.id}" style="cursor:pointer"><span style="flex:1"><b>${esc(t.n)}</b><br><small style="color:var(--mu)">${dateLabel(t.date)}${t.time?' · '+esc(fmtClock(t.time)):''}</small></span><b>${label}</b></div>`}).join('')||'<p style="color:var(--mu)">لا توجد مهام قادمة.</p>'}
  <div class=row style="flex-wrap:nowrap"><button id=addFuture style="background:var(--tx);color:var(--bg);border-color:var(--tx);padding:6px 18px">+ إضافة مهمة قادمة</button></div>
  <h2>التصنيفات</h2>${S.cats.map((k,i)=>`<div class=row data-cat=${i} style="margin-bottom:6px"><input value="${esc(k.e||'')}" maxlength=8 style="width:56px;text-align:center"><input type=color value="${k.c}" style="width:44px;height:34px;padding:2px"><input value="${esc(k.n)}" style="flex:1"></div>`).join('')}<div class=row><button id=ac>+ تصنيف</button></div>
@@ -192,9 +195,8 @@ async function report(from){
  const p=tasks.length?Math.round(done/tasks.length*100):null,sum={},daily=[],activeDays=ds.filter(({x})=>x.blocks.length).length;
  let tot=0;
  ds.forEach(({d,x})=>{
-  let mins=0;
-  x.blocks.forEach(b=>{const v=Math.max(0,b.t-b.f);sum[b.c]=(sum[b.c]||0)+v;tot+=v;mins+=v});
-  daily.push({d,x,mins});
+  x.blocks.forEach(b=>{const v=Math.max(0,b.t-b.f);sum[b.c]=(sum[b.c]||0)+v});
+  const mins=unionMinutes(x.blocks);tot+=mins;daily.push({d,x,mins});
  });
  const maxDaily=Math.max(1,...daily.map(v=>v.mins));
  const maxCat=Math.max(1,...Object.values(sum));
@@ -205,13 +207,13 @@ async function report(from){
  <div style="${GR}">
   ${stat(tasks.length,'إجمالي المهام')}
   ${stat(done,'مهام مكتملة')}
-  ${stat(dur(tot),'ساعات النشاط')}
+  ${stat(dur(tot),'الوقت الفعلي للنشاط')}
   ${stat(activeDays+'/7','أيام النشاط')}
  </div>
  <h2>إنجاز المهام</h2>
  <div class=row style="justify-content:space-between"><b>${p===null?'لا توجد مهام مسجلة':p+'%'}</b><span style="color:var(--mu);font-size:13px">${done} مكتملة من ${tasks.length}</span></div>
  ${bar(p)}
- <h2>توزيع الوقت</h2>
+ <h2>توزيع مدد المهام حسب التصنيفات</h2><p style="color:var(--mu);font-size:12px">قد يتجاوز مجموع مدد المهام الوقت الفعلي عند وجود أنشطة متزامنة.</p>
  ${S.cats.map((k,i)=>{const v=sum[i]||0;return `<div style="margin:10px 0"><div class=row style="justify-content:space-between"><span><span class=c style="background:${k.c}"></span>${k.e||''} ${esc(k.n)}</span><b>${dur(v)}</b></div><div style="height:7px;border-radius:8px;background:var(--bd);overflow:hidden"><div style="height:100%;width:${Math.round(v/maxCat*100)}%;background:${k.c};border-radius:8px"></div></div></div>`}).join('')||'<p style="color:var(--mu)">لا توجد تصنيفات.</p>'}
  <h2>نشاطك اليومي</h2>
  <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;align-items:end;margin:12px 0">
@@ -229,13 +231,13 @@ async function monthView(r0){
  const days=[...Array(m1.getDate())].map((_,i)=>addD(m0,i)),ds=await Promise.all(days.map(ld)),groups=[];
  ds.forEach(v=>{const key=dk(wkStart(v.d));let g=groups.find(x=>x.key===key);if(!g){g={key,days:[]};groups.push(g)}g.days.push(v)});
  const allTasks=ds.flatMap(({x})=>x.tasks),done=allTasks.filter(t=>t.x).length,open=allTasks.filter(t=>!t.x),completion=allTasks.length?Math.round(done/allTasks.length*100):null;
- const sum={},daily=ds.map(({d,x})=>({d,mins:x.blocks.reduce((a,b)=>a+Math.max(0,b.t-b.f),0)}));let total=0;
- ds.forEach(({x})=>x.blocks.forEach(b=>{const v=Math.max(0,b.t-b.f);sum[b.c]=(sum[b.c]||0)+v;total+=v}));
+ const sum={},daily=ds.map(({d,x})=>({d,mins:unionMinutes(x.blocks)}));let total=daily.reduce((a,v)=>a+v.mins,0);
+ ds.forEach(({x})=>x.blocks.forEach(b=>{const v=Math.max(0,b.t-b.f);sum[b.c]=(sum[b.c]||0)+v}));
  const activeDays=daily.filter(x=>x.mins>0).length,maxDaily=Math.max(1,...daily.map(x=>x.mins));
  const stat=(v,l)=>'<div style="border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--hv)"><div style="font-size:25px;font-weight:700;line-height:1.4">'+v+'</div><div style="font-size:12px;color:var(--mu)">'+l+'</div></div>';
  const weekCards=groups.map((g,i)=>{
   const ts=g.days.flatMap(v=>v.x.tasks),n=ts.length,c=ts.filter(t=>t.x).length,p=n?Math.round(c/n*100):null;
-  const mins=g.days.reduce((a,v)=>a+v.x.blocks.reduce((n,b)=>n+Math.max(0,b.t-b.f),0),0),active=g.days.filter(v=>v.x.blocks.length).length;
+  const mins=g.days.reduce((a,v)=>a+unionMinutes(v.x.blocks),0),active=g.days.filter(v=>v.x.blocks.length).length;
   return '<div style="border:1px solid var(--bd);border-radius:12px;padding:12px;background:var(--hv)"><b>الأسبوع '+(i+1)+'</b><div style="font-size:12px;color:var(--mu);margin:3px 0 10px">'+shortD(g.days[0].d)+' – '+shortD(g.days[g.days.length-1].d)+'</div><div style="font-size:23px;font-weight:700">'+(p===null?'—':p+'%')+'</div>'+bar(p)+'<div style="font-size:12px;color:var(--mu)">'+c+' من '+n+' مهمة · '+dur(mins)+' نشاط · '+active+' أيام نشطة</div></div>';
  }).join('');
  A.innerHTML='<div class="row bar"><button id=bk>رجوع لليوم</button><div class=row><button id=mp>الشهر السابق</button><button id=mx>الشهر التالي</button></div></div>'+
@@ -243,7 +245,7 @@ async function monthView(r0){
  '<h2>ملخص الشهر</h2><div style="'+GR+'">'+stat(allTasks.length,'إجمالي المهام')+stat(done,'المهام المكتملة')+stat(dur(total),'ساعات النشاط')+stat(activeDays+'/'+days.length,'أيام النشاط')+'</div>'+
  '<h2>معدل إنجاز المهام</h2><div class=row style="justify-content:space-between"><b>'+(completion===null?'لا توجد مهام مسجلة':completion+'%')+'</b><span style="color:var(--mu);font-size:13px">'+done+' مكتملة من '+allTasks.length+'</span></div>'+bar(completion)+
  '<h2>مقارنة الأسابيع</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px">'+weekCards+'</div>'+
- '<h2>توزيع الوقت حسب التصنيفات</h2>'+
+ '<h2>توزيع مدد المهام حسب التصنيفات</h2><p style="color:var(--mu);font-size:12px">قد يتجاوز مجموع مدد المهام الوقت الفعلي عند وجود أنشطة متزامنة.</p>'+
  (S.cats.map((k,i)=>{const v=sum[i]||0;return '<div style="margin:10px 0"><div class=row style="justify-content:space-between"><span><span class=c style="background:'+k.c+'"></span>'+(k.e||'')+' '+esc(k.n)+'</span><b>'+dur(v)+'</b></div><div style="height:7px;border-radius:8px;background:var(--bd);overflow:hidden"><div style="height:100%;width:'+(total?Math.round(v/total*100):0)+'%;background:'+k.c+';border-radius:8px"></div></div></div>'}).join('')||'<p style="color:var(--mu)">لا توجد تصنيفات.</p>')+
  '<h2>النشاط اليومي</h2><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:12px 0">'+
  daily.map(({d,mins})=>'<div title="'+fd(d)+' · '+dur(mins)+'" style="text-align:center;min-width:0"><div style="height:76px;display:flex;align-items:end;justify-content:center"><div style="width:65%;height:'+(mins?Math.max(4,mins/maxDaily*76):3)+'px;background:var(--tx);border-radius:5px 5px 0 0;opacity:'+(mins?1:.2)+'"></div></div><div style="font-size:10px;color:var(--mu);margin-top:5px">'+d.getDate()+'</div></div>').join('')+
